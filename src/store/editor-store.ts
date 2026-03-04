@@ -14,7 +14,7 @@ import type {
   LimbProps,
   TimelineComposition,
 } from "@/engine/types";
-import { EMPTY_TIMELINE_COMPOSITION } from "@/engine/types";
+import { EMPTY_TIMELINE_COMPOSITION, ANIMATABLE_PROPERTIES } from "@/engine/types";
 import {
   createSceneDocument,
   createNode,
@@ -28,6 +28,7 @@ import {
 } from "@/engine/scene-graph";
 import {
   setKeyframe,
+  interpolateProperty,
   removeKeyframe as removeKf,
   moveKeyframe,
   updateKeyframeEasing,
@@ -111,6 +112,7 @@ interface EditorState {
   removeKeyframeById: (nodeId: string, property: AnimatableProperty, keyframeId: string) => void;
   moveKeyframeTo: (nodeId: string, property: AnimatableProperty, keyframeId: string, newTimeMs: number) => void;
   updateKeyframeEasingById: (nodeId: string, property: AnimatableProperty, keyframeId: string, easing: EasingDefinition) => void;
+  fillInbetweenKeyframes: (nodeId: string, stepFrames?: number) => void;
 
   // Preset animation
   applyPreset: (nodeId: string, presetId: AnimationPresetId, options?: PresetAnimationOptions) => void;
@@ -449,6 +451,45 @@ export const useEditorStore = create<EditorState>()(
       set((state) => {
         const nextDoc = updateKeyframeEasing(state.document, nodeId, property, keyframeId, easing);
         applyDocumentToActiveScene(state, nextDoc);
+      });
+    },
+
+    fillInbetweenKeyframes: (nodeId, stepFrames = 1) => {
+      set((state) => {
+        const anim = state.document.animations[nodeId];
+        if (!anim) return;
+
+        const frameStep = Math.max(1, Math.round(stepFrames));
+        const frameDurationMs = 1000 / state.fps;
+        let nextDoc = state.document;
+        let changed = false;
+
+        for (const prop of ANIMATABLE_PROPERTIES) {
+          const sourceTrack = anim.tracks[prop];
+          if (!sourceTrack || sourceTrack.keyframes.length < 2) continue;
+
+          const firstMs = sourceTrack.keyframes[0].timeMs;
+          const lastMs = sourceTrack.keyframes[sourceTrack.keyframes.length - 1].timeMs;
+          const startFrame = Math.ceil(firstMs / frameDurationMs);
+          const endFrame = Math.floor(lastMs / frameDurationMs);
+
+          const existingTimes = new Set(sourceTrack.keyframes.map((kf) => Math.round(kf.timeMs)));
+
+          for (let frame = startFrame + frameStep; frame < endFrame; frame += frameStep) {
+            const sampleMs = Math.round(frame * frameDurationMs);
+            if (existingTimes.has(sampleMs)) continue;
+
+            const sampledValue = interpolateProperty(sourceTrack, sampleMs);
+            if (sampledValue === undefined) continue;
+
+            nextDoc = setKeyframe(nextDoc, nodeId, prop, sampleMs, sampledValue, { type: "linear" });
+            changed = true;
+          }
+        }
+
+        if (changed) {
+          applyDocumentToActiveScene(state, nextDoc);
+        }
       });
     },
 

@@ -1,6 +1,8 @@
 "use client";
 
+import { KeySquare } from "lucide-react";
 import { useEditorStore } from "@/store/editor-store";
+import { usePlaybackStore } from "@/store/playback-store";
 import { useSelectionStore } from "@/store/selection-store";
 import type {
   AnimatableProperty,
@@ -18,6 +20,8 @@ export function PropertiesPanel() {
   const document = useEditorStore((s) => s.document);
   const updateNodeTransform = useEditorStore((s) => s.updateNodeTransform);
   const updateNodeProps = useEditorStore((s) => s.updateNodeProps);
+  const setKeyframeAt = useEditorStore((s) => s.setKeyframeAt);
+  const currentTimeMs = usePlaybackStore((s) => s.currentTimeMs);
   const selectedNodeIds = useSelectionStore((s) => s.selectedNodeIds);
 
   const selectedId = [...selectedNodeIds][0];
@@ -34,6 +38,10 @@ export function PropertiesPanel() {
 
   const handleTransformChange = (prop: AnimatableProperty, value: number) => {
     updateNodeTransform(selectedId, { [prop]: value });
+  };
+
+  const handleSetKeyframe = (prop: AnimatableProperty) => {
+    setKeyframeAt(selectedId, prop, currentTimeMs, node.transform[prop]);
   };
 
   return (
@@ -435,12 +443,49 @@ export function PropertiesPanel() {
         <div>
           <label className="block text-xs text-gray-500 mb-2">Position & Transform</label>
           <div className="space-y-2">
-            <TransformRow label="X" value={node.transform.x} onChange={(v) => handleTransformChange("x", v)} />
-            <TransformRow label="Y" value={node.transform.y} onChange={(v) => handleTransformChange("y", v)} />
-            <TransformRow label="Rotation" value={node.transform.rotation} onChange={(v) => handleTransformChange("rotation", v)} step={1} suffix="deg" />
-            <TransformRow label="Width Scale" value={node.transform.scaleX} onChange={(v) => handleTransformChange("scaleX", v)} step={0.01} />
-            <TransformRow label="Height Scale" value={node.transform.scaleY} onChange={(v) => handleTransformChange("scaleY", v)} step={0.01} />
-            <TransformRow label="Opacity" value={node.transform.opacity} onChange={(v) => handleTransformChange("opacity", v)} step={0.01} min={0} max={1} />
+            <TransformRow
+              label="X"
+              value={node.transform.x}
+              onChange={(v) => handleTransformChange("x", v)}
+              onKeyframe={() => handleSetKeyframe("x")}
+            />
+            <TransformRow
+              label="Y"
+              value={node.transform.y}
+              onChange={(v) => handleTransformChange("y", v)}
+              onKeyframe={() => handleSetKeyframe("y")}
+            />
+            <TransformRow
+              label="Rotation"
+              value={node.transform.rotation}
+              onChange={(v) => handleTransformChange("rotation", v)}
+              onKeyframe={() => handleSetKeyframe("rotation")}
+              step={1}
+              suffix="deg"
+            />
+            <TransformRow
+              label="Width Scale"
+              value={node.transform.scaleX}
+              onChange={(v) => handleTransformChange("scaleX", v)}
+              onKeyframe={() => handleSetKeyframe("scaleX")}
+              step={0.01}
+            />
+            <TransformRow
+              label="Height Scale"
+              value={node.transform.scaleY}
+              onChange={(v) => handleTransformChange("scaleY", v)}
+              onKeyframe={() => handleSetKeyframe("scaleY")}
+              step={0.01}
+            />
+            <TransformRow
+              label="Opacity"
+              value={node.transform.opacity}
+              onChange={(v) => handleTransformChange("opacity", v)}
+              onKeyframe={() => handleSetKeyframe("opacity")}
+              step={0.01}
+              min={0}
+              max={1}
+            />
           </div>
         </div>
 
@@ -485,6 +530,7 @@ function TransformRow({
   label,
   value,
   onChange,
+  onKeyframe,
   step = 1,
   min,
   max,
@@ -493,6 +539,7 @@ function TransformRow({
   label: string;
   value: number;
   onChange: (value: number) => void;
+  onKeyframe?: () => void;
   step?: number;
   min?: number;
   max?: number;
@@ -514,6 +561,15 @@ function TransformRow({
         className="flex-1 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
       />
       {suffix && <span className="text-xs text-gray-600">{suffix}</span>}
+      {onKeyframe && (
+        <button
+          onClick={onKeyframe}
+          className="p-1 rounded text-gray-500 hover:text-yellow-400 hover:bg-gray-800 transition-colors"
+          title="Add keyframe at playhead"
+        >
+          <KeySquare className="w-3.5 h-3.5" />
+        </button>
+      )}
     </div>
   );
 }

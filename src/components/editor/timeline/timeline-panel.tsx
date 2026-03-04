@@ -1,14 +1,15 @@
 "use client";
 
-import { useRef, useCallback, useState } from "react";
-import { Plus, Trash2, Diamond } from "lucide-react";
+import { useRef, useCallback, useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight, Trash2, Diamond, WandSparkles, Play, Pause, Square } from "lucide-react";
 import { useEditorStore } from "@/store/editor-store";
 import { usePlaybackStore } from "@/store/playback-store";
 import { useSelectionStore } from "@/store/selection-store";
 // import { useUIStore } from "@/store/ui-store"; // Deprecated: timeline replaced by storyboard
 import { msToFrame, frameToMs, formatTimecode } from "@/engine/time-utils";
+import { EASING_PRESETS } from "@/engine/easing";
 import { ANIMATABLE_PROPERTIES } from "@/engine/types";
-import type { AnimatableProperty } from "@/engine/types";
+import type { AnimatableProperty, EasingDefinition, SceneNode } from "@/engine/types";
 
 interface ContextMenu {
   x: number;
@@ -16,6 +17,22 @@ interface ContextMenu {
   nodeId: string;
   property: AnimatableProperty;
   keyframeId: string;
+  easing: EasingDefinition;
+}
+
+const EASING_MENU_OPTIONS: { id: string; label: string; easing: EasingDefinition }[] = [
+  { id: "linear", label: "Linear", easing: EASING_PRESETS.linear },
+  { id: "easeIn", label: "Ease In", easing: EASING_PRESETS.easeIn },
+  { id: "easeOut", label: "Ease Out", easing: EASING_PRESETS.easeOut },
+  { id: "easeInOut", label: "Ease In Out", easing: EASING_PRESETS.easeInOut },
+  { id: "step", label: "Step", easing: EASING_PRESETS.step },
+];
+
+function isSameEasing(a: EasingDefinition, b: EasingDefinition): boolean {
+  if (a.type !== b.type) return false;
+  if (a.type !== "cubicBezier") return true;
+  if (!a.controlPoints || !b.controlPoints) return false;
+  return a.controlPoints.every((v, i) => Math.abs(v - b.controlPoints![i]) < 0.0001);
 }
 
 export function TimelinePanel() {
@@ -24,13 +41,19 @@ export function TimelinePanel() {
   const durationMs = useEditorStore((s) => s.durationMs);
   const setKeyframeAt = useEditorStore((s) => s.setKeyframeAt);
   const removeKeyframeById = useEditorStore((s) => s.removeKeyframeById);
+  const updateKeyframeEasingById = useEditorStore((s) => s.updateKeyframeEasingById);
+  const fillInbetweenKeyframes = useEditorStore((s) => s.fillInbetweenKeyframes);
   const currentTimeMs = usePlaybackStore((s) => s.currentTimeMs);
+  const isPlaying = usePlaybackStore((s) => s.isPlaying);
+  const togglePlay = usePlaybackStore((s) => s.togglePlay);
+  const stop = usePlaybackStore((s) => s.stop);
   const setCurrentTime = usePlaybackStore((s) => s.setCurrentTime);
   const selectedNodeIds = useSelectionStore((s) => s.selectedNodeIds);
   const selectNode = useSelectionStore((s) => s.selectNode);
   const timelineZoom = 100; // Deprecated: timeline replaced by storyboard
 
   const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null);
+  const [fillStepFrames, setFillStepFrames] = useState(1);
   const rulerRef = useRef<HTMLDivElement>(null);
 
   // Total width in pixels
@@ -38,14 +61,23 @@ export function TimelinePanel() {
   const playheadX = (currentTimeMs / 1000) * timelineZoom;
 
   // Handle ruler click to scrub
-  const handleRulerClick = useCallback(
-    (e: React.MouseEvent) => {
-      const rect = e.currentTarget.getBoundingClientRect();
-      const x = e.clientX - rect.left;
+  const scrubByClientX = useCallback(
+    (clientX: number, rect: DOMRect) => {
+      const x = clientX - rect.left;
       const timeMs = (x / timelineZoom) * 1000;
-      setCurrentTime(Math.max(0, Math.min(durationMs, timeMs)));
+      const frame = msToFrame(Math.max(0, Math.min(durationMs, timeMs)), fps);
+      setCurrentTime(frameToMs(frame, fps));
     },
-    [timelineZoom, durationMs, setCurrentTime]
+    [timelineZoom, durationMs, fps, setCurrentTime]
+  );
+
+  const stepFrame = useCallback(
+    (direction: 1 | -1) => {
+      const frame = msToFrame(currentTimeMs, fps);
+      const nextFrame = Math.max(0, Math.min(msToFrame(durationMs, fps), frame + direction));
+      setCurrentTime(frameToMs(nextFrame, fps));
+    },
+    [currentTimeMs, fps, durationMs, setCurrentTime]
   );
 
   // Add keyframes for all properties of a node at the current time
@@ -80,10 +112,16 @@ export function TimelinePanel() {
 
   // Right-click on a keyframe dot
   const handleKeyframeContextMenu = useCallback(
-    (e: React.MouseEvent, nodeId: string, property: AnimatableProperty, keyframeId: string) => {
+    (
+      e: React.MouseEvent,
+      nodeId: string,
+      property: AnimatableProperty,
+      keyframeId: string,
+      easing: EasingDefinition
+    ) => {
       e.preventDefault();
       e.stopPropagation();
-      setContextMenu({ x: e.clientX, y: e.clientY, nodeId, property, keyframeId });
+      setContextMenu({ x: e.clientX, y: e.clientY, nodeId, property, keyframeId, easing });
     },
     []
   );
@@ -95,6 +133,20 @@ export function TimelinePanel() {
     setContextMenu(null);
   }, [contextMenu, removeKeyframeById]);
 
+  const handleSetKeyframeEasing = useCallback(
+    (easing: EasingDefinition) => {
+      if (!contextMenu) return;
+      updateKeyframeEasingById(
+        contextMenu.nodeId,
+        contextMenu.property,
+        contextMenu.keyframeId,
+        easing
+      );
+      setContextMenu(null);
+    },
+    [contextMenu, updateKeyframeEasingById]
+  );
+
   // Close context menu on any click
   const handleCloseContextMenu = useCallback(() => {
     setContextMenu(null);
@@ -102,11 +154,39 @@ export function TimelinePanel() {
 
   // Get nodes to show in timeline (exclude root)
   const rootNode = document.nodes[document.rootNodeId];
-  const trackNodes = rootNode
-    ? rootNode.childIds
-        .map((id) => document.nodes[id])
-        .filter(Boolean)
-    : [];
+  const trackNodes = useMemo(
+    () => {
+      if (!rootNode) return [];
+      const result: SceneNode[] = [];
+
+      const walk = (nodeId: string) => {
+        const node = document.nodes[nodeId];
+        if (!node) return;
+        result.push(node);
+        for (const childId of node.childIds) {
+          walk(childId);
+        }
+      };
+
+      for (const childId of rootNode.childIds) {
+        walk(childId);
+      }
+      return result;
+    },
+    [rootNode, document.nodes]
+  );
+
+  const handleFillInbetweens = useCallback(() => {
+    const targetNodeIds = selectedNodeIds.size > 0
+      ? [...selectedNodeIds]
+      : trackNodes.length > 0
+        ? [trackNodes[0].id]
+        : [];
+
+    for (const nodeId of targetNodeIds) {
+      fillInbetweenKeyframes(nodeId, fillStepFrames);
+    }
+  }, [selectedNodeIds, trackNodes, fillInbetweenKeyframes, fillStepFrames]);
 
   // Generate ruler marks
   const rulerMarks: { x: number; label: string; major: boolean }[] = [];
@@ -138,9 +218,55 @@ export function TimelinePanel() {
         <span className="text-xs text-gray-600">
           Frame {msToFrame(currentTimeMs, fps)} / {msToFrame(durationMs, fps)}
         </span>
+        <button
+          onClick={() => stepFrame(-1)}
+          className="p-1 rounded text-gray-500 hover:text-white hover:bg-gray-800 transition-colors"
+          title="Previous frame"
+        >
+          <ChevronLeft className="w-3.5 h-3.5" />
+        </button>
+        <button
+          onClick={() => stepFrame(1)}
+          className="p-1 rounded text-gray-500 hover:text-white hover:bg-gray-800 transition-colors"
+          title="Next frame"
+        >
+          <ChevronRight className="w-3.5 h-3.5" />
+        </button>
+        <button
+          onClick={togglePlay}
+          className="p-1 rounded text-gray-500 hover:text-white hover:bg-gray-800 transition-colors"
+          title={isPlaying ? "Pause (Space)" : "Play (Space)"}
+        >
+          {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+        </button>
+        <button
+          onClick={stop}
+          className="p-1 rounded text-gray-500 hover:text-white hover:bg-gray-800 transition-colors"
+          title="Stop"
+        >
+          <Square className="w-3.5 h-3.5" />
+        </button>
         <div className="flex-1" />
+        <label className="text-[10px] text-gray-600">Fill step</label>
+        <select
+          value={fillStepFrames}
+          onChange={(e) => setFillStepFrames(parseInt(e.target.value, 10))}
+          className="bg-gray-800 border border-gray-700 rounded px-1.5 py-0.5 text-[10px] text-gray-300"
+        >
+          <option value={1}>1f</option>
+          <option value={2}>2f</option>
+          <option value={4}>4f</option>
+        </select>
+        <button
+          onClick={handleFillInbetweens}
+          className="flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-gray-800 text-blue-300 hover:bg-gray-700 transition-colors"
+          title="Fill in-between keys for selected node(s) using existing easing"
+        >
+          <WandSparkles className="w-3 h-3" />
+          Fill In-Betweens
+        </button>
         <span className="text-[10px] text-gray-600">
-          Double-click to add animation point
+          Double-click track to key all transforms
         </span>
       </div>
 
@@ -192,7 +318,15 @@ export function TimelinePanel() {
             <div
               ref={rulerRef}
               className="h-6 relative border-b border-gray-800 cursor-pointer"
-              onClick={handleRulerClick}
+              onMouseDown={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                scrubByClientX(e.clientX, rect);
+              }}
+              onMouseMove={(e) => {
+                if (e.buttons !== 1) return;
+                const rect = e.currentTarget.getBoundingClientRect();
+                scrubByClientX(e.clientX, rect);
+              }}
             >
               {rulerMarks.map((mark, i) => (
                 <div
@@ -261,7 +395,8 @@ export function TimelinePanel() {
                                 e,
                                 node.id,
                                 prop as AnimatableProperty,
-                                kf.id
+                                kf.id,
+                                kf.easing
                               )
                             }
                           >
@@ -293,6 +428,23 @@ export function TimelinePanel() {
           <div className="px-3 py-1 text-[10px] text-gray-500 border-b border-gray-700">
             {contextMenu.property} animation point
           </div>
+          <div className="px-3 py-1 text-[10px] text-gray-500">
+            Easing
+          </div>
+          {EASING_MENU_OPTIONS.map((option) => (
+            <button
+              key={option.id}
+              onClick={() => handleSetKeyframeEasing(option.easing)}
+              className={`w-full text-left px-3 py-1 text-xs transition-colors ${
+                isSameEasing(contextMenu.easing, option.easing)
+                  ? "text-blue-300 bg-blue-500/10"
+                  : "text-gray-300 hover:bg-gray-700"
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+          <div className="my-1 border-t border-gray-700" />
           <button
             onClick={handleDeleteKeyframe}
             className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-red-400 hover:bg-gray-700 transition-colors"

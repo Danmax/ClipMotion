@@ -10,10 +10,19 @@ import { sampleScene } from "@/engine/keyframe-engine";
 import { hexToNumber, drawShapeBody, drawFace, drawLimbs } from "@/lib/draw-character";
 import type { SceneNode } from "@/engine/types";
 
+function syncSceneViewport(app: Application, sceneContainer: Container, zoom: number) {
+  // Keep scene origin centered in the current viewport after any resize.
+  sceneContainer.x = app.screen.width / 2;
+  sceneContainer.y = app.screen.height / 2;
+  sceneContainer.scale.set(zoom);
+  app.stage.hitArea = app.screen;
+}
+
 export function CanvasViewport() {
   const containerRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<Application | null>(null);
   const sceneContainerRef = useRef<Container | null>(null);
+  const canvasZoomRef = useRef(1);
   const dragStateRef = useRef<{
     nodeId: string;
     startX: number;
@@ -33,12 +42,18 @@ export function CanvasViewport() {
   const canvasZoom = useUIStore((s) => s.canvasZoom);
   const setCanvasZoom = useUIStore((s) => s.setCanvasZoom);
 
+  useEffect(() => {
+    canvasZoomRef.current = canvasZoom;
+  }, [canvasZoom]);
+
   // Initialize PixiJS
   useEffect(() => {
     if (!containerRef.current) return;
 
     const app = new Application();
     let destroyed = false;
+    let handleRendererResize: (() => void) | null = null;
+    let resizeObserver: ResizeObserver | null = null;
 
     const initPromise = app.init({
       background: "#111118",
@@ -48,6 +63,8 @@ export function CanvasViewport() {
       if (destroyed || !containerRef.current) return;
       containerRef.current.appendChild(app.canvas as HTMLCanvasElement);
       appRef.current = app;
+
+      const containerEl = containerRef.current;
 
       // Make stage interactive for pointer events
       app.stage.eventMode = "static";
@@ -59,9 +76,7 @@ export function CanvasViewport() {
       app.stage.addChild(sceneContainer);
       sceneContainerRef.current = sceneContainer;
 
-      // Center the scene container in the viewport
-      sceneContainer.x = app.screen.width / 2;
-      sceneContainer.y = app.screen.height / 2;
+      syncSceneViewport(app, sceneContainer, canvasZoomRef.current);
 
       // Background fill for the canvas area (centered on origin)
       const bg = new Graphics();
@@ -92,11 +107,29 @@ export function CanvasViewport() {
           y: drag.startNodeY + dy,
         });
       });
+
+      // Keep scene centered when layout panels resize.
+      handleRendererResize = () => {
+        syncSceneViewport(app, sceneContainer, canvasZoomRef.current);
+      };
+      app.renderer.on("resize", handleRendererResize);
+
+      resizeObserver = new ResizeObserver(() => {
+        // Ensure center sync even if panel/layout changes race renderer resize timing.
+        handleRendererResize?.();
+      });
+      if (containerEl) {
+        resizeObserver.observe(containerEl);
+      }
     });
 
     return () => {
       destroyed = true;
       initPromise.then(() => {
+        if (handleRendererResize) {
+          app.renderer.off("resize", handleRendererResize);
+        }
+        resizeObserver?.disconnect();
         app.destroy(true, { children: true });
         appRef.current = null;
         sceneContainerRef.current = null;
@@ -110,10 +143,7 @@ export function CanvasViewport() {
     const sc = sceneContainerRef.current;
     if (!app || !sc) return;
 
-    // Canvas background is centered on (0,0), so place scene container at viewport center
-    sc.x = app.screen.width / 2;
-    sc.y = app.screen.height / 2;
-    sc.scale.set(canvasZoom);
+    syncSceneViewport(app, sc, canvasZoom);
   }, [canvasZoom, canvasWidth, canvasHeight]);
 
   // Render scene nodes

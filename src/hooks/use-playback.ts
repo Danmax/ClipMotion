@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef } from "react";
 import { usePlaybackStore } from "@/store/playback-store";
 import { useEditorStore } from "@/store/editor-store";
 
@@ -14,67 +14,64 @@ export function usePlayback() {
   const lastTimestampRef = useRef<number | null>(null);
 
   const isPlaying = usePlaybackStore((s) => s.isPlaying);
-  const currentTimeMs = usePlaybackStore((s) => s.currentTimeMs);
-  const loopEnabled = usePlaybackStore((s) => s.loopEnabled);
-  const loopRegion = usePlaybackStore((s) => s.loopRegion);
-  const playbackSpeed = usePlaybackStore((s) => s.playbackSpeed);
-  const setCurrentTime = usePlaybackStore((s) => s.setCurrentTime);
-  const pause = usePlaybackStore((s) => s.pause);
+  // Keep a store subscription so this hook re-renders when project timing changes.
+  useEditorStore((s) => s.durationMs);
+  useEditorStore((s) => s.fps);
 
-  const durationMs = useEditorStore((s) => s.durationMs);
-  const fps = useEditorStore((s) => s.fps);
+  useEffect(() => {
+    if (!isPlaying) {
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+      lastTimestampRef.current = null;
+      return;
+    }
 
-  const tick = useCallback(
-    (timestamp: number) => {
+    const tick = (timestamp: number) => {
       if (lastTimestampRef.current === null) {
         lastTimestampRef.current = timestamp;
         rafRef.current = requestAnimationFrame(tick);
         return;
       }
 
-      const deltaMs = (timestamp - lastTimestampRef.current) * playbackSpeed;
+      const playbackState = usePlaybackStore.getState();
+      const editorState = useEditorStore.getState();
+
+      const deltaMs = (timestamp - lastTimestampRef.current) * playbackState.playbackSpeed;
       lastTimestampRef.current = timestamp;
 
-      const startMs = loopRegion?.startMs ?? 0;
-      const endMs = loopRegion?.endMs ?? durationMs;
+      const startMs = playbackState.loopRegion?.startMs ?? 0;
+      const endMs = playbackState.loopRegion?.endMs ?? editorState.durationMs;
 
-      let nextTime = currentTimeMs + deltaMs;
+      let nextTime = playbackState.currentTimeMs + deltaMs;
 
       if (nextTime >= endMs) {
-        if (loopEnabled) {
+        if (playbackState.loopEnabled) {
           nextTime = startMs + (nextTime - endMs);
         } else {
           nextTime = endMs;
-          pause();
+          playbackState.pause();
         }
       }
 
       // Snap to frame boundaries for consistent playback
-      const frameDuration = 1000 / fps;
+      const frameDuration = 1000 / editorState.fps;
       const snapped = Math.round(nextTime / frameDuration) * frameDuration;
-      setCurrentTime(snapped);
+      playbackState.setCurrentTime(snapped);
 
       rafRef.current = requestAnimationFrame(tick);
-    },
-    [currentTimeMs, durationMs, fps, loopEnabled, loopRegion, pause, playbackSpeed, setCurrentTime]
-  );
+    };
 
-  useEffect(() => {
-    if (isPlaying) {
-      lastTimestampRef.current = null;
-      rafRef.current = requestAnimationFrame(tick);
-    } else {
+    lastTimestampRef.current = null;
+    rafRef.current = requestAnimationFrame(tick);
+
+    return () => {
       if (rafRef.current !== null) {
         cancelAnimationFrame(rafRef.current);
         rafRef.current = null;
       }
       lastTimestampRef.current = null;
-    }
-
-    return () => {
-      if (rafRef.current !== null) {
-        cancelAnimationFrame(rafRef.current);
-      }
     };
-  }, [isPlaying, tick]);
+  }, [isPlaying]);
 }

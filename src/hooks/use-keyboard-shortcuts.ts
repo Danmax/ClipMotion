@@ -17,10 +17,14 @@ export function useKeyboardShortcuts(onSave?: () => void) {
   const redo = useHistoryStore((s) => s.redo);
   const togglePlay = usePlaybackStore((s) => s.togglePlay);
   const stop = usePlaybackStore((s) => s.stop);
+  const currentTimeMs = usePlaybackStore((s) => s.currentTimeMs);
+  const setCurrentTime = usePlaybackStore((s) => s.setCurrentTime);
   const selectedNodeIds = useSelectionStore((s) => s.selectedNodeIds);
   const clearAll = useSelectionStore((s) => s.clearAll);
   const removeNodeById = useEditorStore((s) => s.removeNodeById);
   const duplicateNodeById = useEditorStore((s) => s.duplicateNodeById);
+  const fps = useEditorStore((s) => s.fps);
+  const durationMs = useEditorStore((s) => s.durationMs);
   const setActiveTool = useUIStore((s) => s.setActiveTool);
 
   useEffect(() => {
@@ -72,6 +76,18 @@ export function useKeyboardShortcuts(onSave?: () => void) {
         return;
       }
 
+      // Nudge playhead frame by frame
+      if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+        e.preventDefault();
+        const frameMs = 1000 / fps;
+        const next =
+          e.key === "ArrowLeft"
+            ? Math.max(0, currentTimeMs - frameMs)
+            : Math.min(durationMs, currentTimeMs + frameMs);
+        setCurrentTime(next);
+        return;
+      }
+
       // Delete selected nodes: Delete or Backspace
       if (e.key === "Delete" || e.key === "Backspace") {
         if (selectedNodeIds.size > 0) {
@@ -116,10 +132,14 @@ export function useKeyboardShortcuts(onSave?: () => void) {
     redo,
     togglePlay,
     stop,
+    currentTimeMs,
+    setCurrentTime,
     selectedNodeIds,
     clearAll,
     removeNodeById,
     duplicateNodeById,
+    fps,
+    durationMs,
     setActiveTool,
     onSave,
   ]);

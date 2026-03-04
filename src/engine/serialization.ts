@@ -20,10 +20,6 @@ const keyframeTrackSchema = z.object({
   keyframes: z.array(keyframeSchema),
 });
 
-const animatablePropertyKey = z.enum([
-  "x", "y", "rotation", "scaleX", "scaleY", "opacity",
-]);
-
 const nodeAnimationSchema = z.object({
   nodeId: z.string(),
   tracks: z.record(z.string(), keyframeTrackSchema).default({}),
@@ -59,7 +55,31 @@ const textPropsSchema = z.object({
 });
 
 const facePropsSchema = z.object({
-  expression: z.enum(["neutral", "happy", "sad", "angry", "surprised", "worried", "smug", "scared", "dead"]),
+  expression: z.enum([
+    "neutral",
+    "happy",
+    "smiles",
+    "joy",
+    "sad",
+    "fear",
+    "angry",
+    "thinking",
+    "worry",
+    "worried",
+    "releive",
+    "content",
+    "bored",
+    "meh",
+    "tongueOut",
+    "sleeping",
+    "tired",
+    "kiss",
+    "flirt",
+    "surprised",
+    "smug",
+    "scared",
+    "dead",
+  ]),
   eyeStyle: z.enum(["dot", "circle", "oval", "angry", "closed", "wink", "wide"]),
   eyeSize: z.number(),
   eyeSpacing: z.number(),

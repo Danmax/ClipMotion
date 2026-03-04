@@ -79,7 +79,30 @@ export type EyeStyle = "dot" | "circle" | "oval" | "angry" | "closed" | "wink" |
 export type MouthStyle = "smile" | "frown" | "open" | "line" | "o" | "teeth" | "wavy" | "small-smile";
 export type EyebrowStyle = "none" | "line" | "arc" | "angry" | "sad";
 export type MouthEffect = "none" | "talk";
-export type ExpressionPreset = "neutral" | "happy" | "sad" | "angry" | "surprised" | "worried" | "smug" | "scared" | "dead";
+export type ExpressionPreset =
+  | "neutral"
+  | "happy"
+  | "smiles"
+  | "joy"
+  | "sad"
+  | "fear"
+  | "angry"
+  | "thinking"
+  | "worry"
+  | "worried"
+  | "releive"
+  | "content"
+  | "bored"
+  | "meh"
+  | "tongueOut"
+  | "sleeping"
+  | "tired"
+  | "kiss"
+  | "flirt"
+  | "surprised"
+  | "smug"
+  | "scared"
+  | "dead";
 
 export interface FaceProps {
   expression: ExpressionPreset;

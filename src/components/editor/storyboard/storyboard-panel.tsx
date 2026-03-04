@@ -9,7 +9,6 @@ export function StoryboardPanel() {
   const sceneOrder = useEditorStore((s) => s.sceneOrder);
   const scenes = useEditorStore((s) => s.scenes);
   const sceneId = useEditorStore((s) => s.sceneId);
-  const document = useEditorStore((s) => s.document);
   const setActiveScene = useEditorStore((s) => s.setActiveScene);
   const addScene = useEditorStore((s) => s.addScene);
   const removeScene = useEditorStore((s) => s.removeScene);
@@ -18,11 +17,6 @@ export function StoryboardPanel() {
   const reorderScenes = useEditorStore((s) => s.reorderScenes);
 
   const [dragFromIndex, setDragFromIndex] = useState<number | null>(null);
-
-  const handleDrop = useCallback(() => {
-    // onDragOver already tracks target; here we finalize the reorder
-    // We need to track dragOverIndex too
-  }, []);
 
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
@@ -48,7 +42,7 @@ export function StoryboardPanel() {
   };
 
   return (
-    <div className="h-[130px] border-t border-gray-800 bg-gray-900 flex items-center px-3 gap-3 overflow-x-auto shrink-0">
+    <div className="h-full min-h-[96px] border-t border-gray-800 bg-gray-900 flex items-center px-3 gap-3 overflow-x-auto">
       {/* Label */}
       <div className="shrink-0 flex flex-col items-center gap-0.5 w-16">
         <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">
