@@ -19,6 +19,15 @@ export default async function EditorPage({ params }: EditorPageProps) {
 
   if (!project) notFound();
 
+  let timelineData: Record<string, unknown> | null = null;
+  if (typeof project.timelineData === "string") {
+    try {
+      timelineData = JSON.parse(project.timelineData) as Record<string, unknown>;
+    } catch {
+      timelineData = null;
+    }
+  }
+
   return (
     <EditorShell
       project={{
@@ -29,6 +38,7 @@ export default async function EditorPage({ params }: EditorPageProps) {
         width: project.width,
         height: project.height,
         version: project.version,
+        timelineData,
       }}
       scenes={project.scenes.map((s) => ({
         id: s.id,

@@ -20,6 +20,7 @@ export function useAutosave() {
   const version = useEditorStore((s) => s.version);
   const fps = useEditorStore((s) => s.fps);
   const projectName = useEditorStore((s) => s.projectName);
+  const timelineComposition = useEditorStore((s) => s.timelineComposition);
   const markClean = useEditorStore((s) => s.markClean);
   const setVersion = useEditorStore((s) => s.setVersion);
 
@@ -44,7 +45,12 @@ export function useAutosave() {
       const projectRes = await fetch(`/api/projects/${projectId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: projectName, fps, version }),
+        body: JSON.stringify({
+          name: projectName,
+          fps,
+          timelineData: timelineComposition,
+          version,
+        }),
       });
 
       if (sceneRes.ok && projectRes.ok) {
@@ -59,7 +65,7 @@ export function useAutosave() {
     } finally {
       savingRef.current = false;
     }
-  }, [projectId, sceneId, document, fps, projectName, version, markClean, setVersion]);
+  }, [projectId, sceneId, document, fps, projectName, timelineComposition, version, markClean, setVersion]);
 
   useEffect(() => {
     if (!dirty) return;

@@ -5,3 +5,4 @@ export * from "./keyframe-engine";
 export * from "./easing";
 export * from "./time-utils";
 export * from "./serialization";
+export * from "./composition";

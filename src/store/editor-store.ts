@@ -10,7 +10,9 @@ import type {
   ShapeProps,
   TextProps,
   FaceProps,
+  TimelineComposition,
 } from "@/engine/types";
+import { EMPTY_TIMELINE_COMPOSITION } from "@/engine/types";
 import {
   createSceneDocument,
   createNode,
@@ -29,6 +31,19 @@ import {
   updateKeyframeEasing,
 } from "@/engine/keyframe-engine";
 import { deserializeScene } from "@/engine/serialization";
+import {
+  createSingleClipComposition,
+  createCompositionFromScenes,
+  normalizeComposition,
+  computeCompositionDuration,
+} from "@/engine/composition";
+
+interface EditorSceneState {
+  id: string;
+  name: string;
+  order: number;
+  document: SceneDocument;
+}
 
 interface EditorState {
   // Project metadata
@@ -43,6 +58,9 @@ interface EditorState {
   // Scene data
   sceneId: string | null;
   document: SceneDocument;
+  scenes: Record<string, EditorSceneState>;
+  sceneOrder: string[];
+  timelineComposition: TimelineComposition;
   dirty: boolean;
 
   // Actions
@@ -54,9 +72,16 @@ interface EditorState {
     width: number;
     height: number;
     version: number;
-    sceneId: string;
-    sceneData: unknown;
+    scenes: {
+      id: string;
+      name: string;
+      order: number;
+      data: unknown;
+    }[];
+    timelineData?: Record<string, unknown> | null;
   }) => void;
+  setActiveScene: (sceneId: string) => void;
+  setTimelineComposition: (composition: TimelineComposition) => void;
 
   // Node operations
   addSpriteNode: (name: string, assetId?: string, transform?: Partial<Transform>) => string;
@@ -85,8 +110,63 @@ interface EditorState {
   markClean: () => void;
 }
 
+function tryDeserializeSceneData(data: unknown): SceneDocument {
+  try {
+    return deserializeScene(data);
+  } catch {
+    return createSceneDocument();
+  }
+}
+
+function applyDocumentToActiveScene(
+  state: {
+    sceneId: string | null;
+    document: SceneDocument;
+    scenes: Record<string, EditorSceneState>;
+    dirty: boolean;
+  },
+  nextDocument: SceneDocument
+) {
+  state.document = nextDocument;
+  if (state.sceneId && state.scenes[state.sceneId]) {
+    state.scenes[state.sceneId] = {
+      ...state.scenes[state.sceneId],
+      document: nextDocument,
+    };
+  }
+  state.dirty = true;
+}
+
+function parseTimelineData(
+  timelineData: Record<string, unknown> | null | undefined,
+  scenes: { id: string; order: number }[],
+  durationMs: number
+): TimelineComposition {
+  const sceneIds = new Set(scenes.map((s) => s.id));
+
+  if (timelineData && typeof timelineData === "object") {
+    const maybeComposition = timelineData as unknown as TimelineComposition;
+    if (maybeComposition.version === 1 && Array.isArray(maybeComposition.clips)) {
+      const normalized = normalizeComposition(maybeComposition);
+      const filtered = {
+        version: 1 as const,
+        clips: normalized.clips.filter((clip) => sceneIds.has(clip.sceneId)),
+      };
+      if (filtered.clips.length > 0 || scenes.length === 0) {
+        return filtered;
+      }
+    }
+  }
+
+  if (scenes.length === 0) return EMPTY_TIMELINE_COMPOSITION;
+  if (scenes.length === 1) return createSingleClipComposition(scenes[0].id, durationMs);
+
+  const defaultClipDuration = Math.max(1000, Math.floor(durationMs / scenes.length));
+  return createCompositionFromScenes(scenes, defaultClipDuration);
+}
+
 export const useEditorStore = create<EditorState>()(
-  immer((set, get) => ({
+  immer((set) => ({
     projectId: null,
     projectName: "Untitled",
     fps: 24,
@@ -96,32 +176,90 @@ export const useEditorStore = create<EditorState>()(
     version: 1,
     sceneId: null,
     document: createSceneDocument(),
+    scenes: {},
+    sceneOrder: [],
+    timelineComposition: EMPTY_TIMELINE_COMPOSITION,
     dirty: false,
 
     loadProject: (params) => {
-      const doc = deserializeScene(params.sceneData);
+      const sortedScenes = [...params.scenes].sort((a, b) => a.order - b.order);
+      const sceneEntries = sortedScenes.map((scene) => ({
+        id: scene.id,
+        name: scene.name,
+        order: scene.order,
+        document: tryDeserializeSceneData(scene.data),
+      }));
+
+      const scenesById: Record<string, EditorSceneState> = {};
+      for (const scene of sceneEntries) {
+        scenesById[scene.id] = scene;
+      }
+
+      const timeline = parseTimelineData(
+        params.timelineData ?? null,
+        sceneEntries.map((s) => ({ id: s.id, order: s.order })),
+        params.durationMs
+      );
+      const timelineDurationMs = computeCompositionDuration(timeline);
+
+      const activeSceneId = sceneEntries[0]?.id ?? null;
+      const activeDocument = activeSceneId
+        ? scenesById[activeSceneId].document
+        : createSceneDocument();
+
       set((state) => {
         state.projectId = params.projectId;
         state.projectName = params.name;
         state.fps = params.fps;
-        state.durationMs = params.durationMs;
+        state.durationMs = Math.max(params.durationMs, timelineDurationMs);
         state.canvasWidth = params.width;
         state.canvasHeight = params.height;
         state.version = params.version;
-        state.sceneId = params.sceneId;
-        state.document = doc;
+        state.sceneId = activeSceneId;
+        state.document = activeDocument;
+        state.scenes = scenesById;
+        state.sceneOrder = sceneEntries.map((s) => s.id);
+        state.timelineComposition = timeline;
         state.dirty = false;
+      });
+    },
+
+    setActiveScene: (sceneId) => {
+      set((state) => {
+        const scene = state.scenes[sceneId];
+        if (!scene) return;
+        state.sceneId = sceneId;
+        state.document = scene.document;
+      });
+    },
+
+    setTimelineComposition: (composition) => {
+      set((state) => {
+        state.timelineComposition = normalizeComposition(composition);
+        const computedDuration = computeCompositionDuration(state.timelineComposition);
+        if (computedDuration > 0) {
+          state.durationMs = computedDuration;
+        }
+        state.dirty = true;
       });
     },
 
     addSpriteNode: (name, assetId, transform) => {
       const node = createNode(name, "sprite" as NodeType, {
         assetId,
-        transform: { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1, ...transform },
+        transform: {
+          x: 0,
+          y: 0,
+          rotation: 0,
+          scaleX: 1,
+          scaleY: 1,
+          opacity: 1,
+          ...transform,
+        },
       });
       set((state) => {
-        state.document = addNode(state.document, node, state.document.rootNodeId);
-        state.dirty = true;
+        const nextDoc = addNode(state.document, node, state.document.rootNodeId);
+        applyDocumentToActiveScene(state, nextDoc);
       });
       return node.id;
     },
@@ -129,11 +267,19 @@ export const useEditorStore = create<EditorState>()(
     addShapeNode: (name, shape, transform) => {
       const node = createNode(name, "shape" as NodeType, {
         shape,
-        transform: { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1, ...transform },
+        transform: {
+          x: 0,
+          y: 0,
+          rotation: 0,
+          scaleX: 1,
+          scaleY: 1,
+          opacity: 1,
+          ...transform,
+        },
       });
       set((state) => {
-        state.document = addNode(state.document, node, state.document.rootNodeId);
-        state.dirty = true;
+        const nextDoc = addNode(state.document, node, state.document.rootNodeId);
+        applyDocumentToActiveScene(state, nextDoc);
       });
       return node.id;
     },
@@ -142,11 +288,19 @@ export const useEditorStore = create<EditorState>()(
       const node = createNode(name, "shape" as NodeType, {
         shape,
         face,
-        transform: { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1, ...transform },
+        transform: {
+          x: 0,
+          y: 0,
+          rotation: 0,
+          scaleX: 1,
+          scaleY: 1,
+          opacity: 1,
+          ...transform,
+        },
       });
       set((state) => {
-        state.document = addNode(state.document, node, state.document.rootNodeId);
-        state.dirty = true;
+        const nextDoc = addNode(state.document, node, state.document.rootNodeId);
+        applyDocumentToActiveScene(state, nextDoc);
       });
       return node.id;
     },
@@ -154,11 +308,19 @@ export const useEditorStore = create<EditorState>()(
     addTextNode: (name, text, transform) => {
       const node = createNode(name, "text" as NodeType, {
         text,
-        transform: { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1, opacity: 1, ...transform },
+        transform: {
+          x: 0,
+          y: 0,
+          rotation: 0,
+          scaleX: 1,
+          scaleY: 1,
+          opacity: 1,
+          ...transform,
+        },
       });
       set((state) => {
-        state.document = addNode(state.document, node, state.document.rootNodeId);
-        state.dirty = true;
+        const nextDoc = addNode(state.document, node, state.document.rootNodeId);
+        applyDocumentToActiveScene(state, nextDoc);
       });
       return node.id;
     },
@@ -166,53 +328,52 @@ export const useEditorStore = create<EditorState>()(
     addContainerNode: (name) => {
       const node = createNode(name, "container" as NodeType);
       set((state) => {
-        state.document = addNode(state.document, node, state.document.rootNodeId);
-        state.dirty = true;
+        const nextDoc = addNode(state.document, node, state.document.rootNodeId);
+        applyDocumentToActiveScene(state, nextDoc);
       });
       return node.id;
     },
 
     removeNodeById: (nodeId) => {
       set((state) => {
-        state.document = removeNode(state.document, nodeId);
-        state.dirty = true;
+        const nextDoc = removeNode(state.document, nodeId);
+        applyDocumentToActiveScene(state, nextDoc);
       });
     },
 
     updateNodeTransform: (nodeId, transform) => {
       set((state) => {
-        state.document = updateTransform(state.document, nodeId, transform);
-        state.dirty = true;
+        const nextDoc = updateTransform(state.document, nodeId, transform);
+        applyDocumentToActiveScene(state, nextDoc);
       });
     },
 
     updateNodeProps: (nodeId, updates) => {
       set((state) => {
-        state.document = updateNode(state.document, nodeId, updates);
-        state.dirty = true;
+        const nextDoc = updateNode(state.document, nodeId, updates);
+        applyDocumentToActiveScene(state, nextDoc);
       });
     },
 
     reparentNodeTo: (nodeId, newParentId, index) => {
       set((state) => {
-        state.document = reparentNode(state.document, nodeId, newParentId, index);
-        state.dirty = true;
+        const nextDoc = reparentNode(state.document, nodeId, newParentId, index);
+        applyDocumentToActiveScene(state, nextDoc);
       });
     },
 
     reorderChildNode: (parentId, fromIndex, toIndex) => {
       set((state) => {
-        state.document = reorderChild(state.document, parentId, fromIndex, toIndex);
-        state.dirty = true;
+        const nextDoc = reorderChild(state.document, parentId, fromIndex, toIndex);
+        applyDocumentToActiveScene(state, nextDoc);
       });
     },
 
     duplicateNodeById: (nodeId) => {
       let newId: string | null = null;
       set((state) => {
-        const [newDoc, id] = duplicateNode(state.document, nodeId);
-        state.document = newDoc;
-        state.dirty = true;
+        const [nextDoc, id] = duplicateNode(state.document, nodeId);
+        applyDocumentToActiveScene(state, nextDoc);
         newId = id;
       });
       return newId;
@@ -220,29 +381,29 @@ export const useEditorStore = create<EditorState>()(
 
     setKeyframeAt: (nodeId, property, timeMs, value, easing) => {
       set((state) => {
-        state.document = setKeyframe(state.document, nodeId, property, timeMs, value, easing);
-        state.dirty = true;
+        const nextDoc = setKeyframe(state.document, nodeId, property, timeMs, value, easing);
+        applyDocumentToActiveScene(state, nextDoc);
       });
     },
 
     removeKeyframeById: (nodeId, property, keyframeId) => {
       set((state) => {
-        state.document = removeKf(state.document, nodeId, property, keyframeId);
-        state.dirty = true;
+        const nextDoc = removeKf(state.document, nodeId, property, keyframeId);
+        applyDocumentToActiveScene(state, nextDoc);
       });
     },
 
     moveKeyframeTo: (nodeId, property, keyframeId, newTimeMs) => {
       set((state) => {
-        state.document = moveKeyframe(state.document, nodeId, property, keyframeId, newTimeMs);
-        state.dirty = true;
+        const nextDoc = moveKeyframe(state.document, nodeId, property, keyframeId, newTimeMs);
+        applyDocumentToActiveScene(state, nextDoc);
       });
     },
 
     updateKeyframeEasingById: (nodeId, property, keyframeId, easing) => {
       set((state) => {
-        state.document = updateKeyframeEasing(state.document, nodeId, property, keyframeId, easing);
-        state.dirty = true;
+        const nextDoc = updateKeyframeEasing(state.document, nodeId, property, keyframeId, easing);
+        applyDocumentToActiveScene(state, nextDoc);
       });
     },
 

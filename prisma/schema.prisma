@@ -83,6 +83,7 @@ model Project {
   thumbnail   String?
   status      String   @default("DRAFT")
   version     Int      @default(1)
+  timelineData String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

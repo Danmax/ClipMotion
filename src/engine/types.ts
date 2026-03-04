@@ -6,6 +6,25 @@ export interface SceneDocument {
   animations: Record<string, NodeAnimation>;
 }
 
+export interface TimelineClip {
+  id: string;
+  sceneId: string;
+  startMs: number;
+  durationMs: number;
+  trimInMs: number;
+  trackIndex: number;
+}
+
+export interface TimelineComposition {
+  version: 1;
+  clips: TimelineClip[];
+}
+
+export const EMPTY_TIMELINE_COMPOSITION: TimelineComposition = {
+  version: 1,
+  clips: [],
+};
+
 /** A single node in the scene graph */
 export interface SceneNode {
   id: string;

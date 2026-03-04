@@ -24,6 +24,7 @@ interface EditorShellProps {
     width: number;
     height: number;
     version: number;
+    timelineData?: Record<string, unknown> | null;
   };
   scenes: {
     id: string;
@@ -46,20 +47,17 @@ export function EditorShell({ project, scenes }: EditorShellProps) {
   useKeyboardShortcuts(save);
 
   useEffect(() => {
-    const scene = scenes[0];
-    if (scene) {
-      loadProject({
-        projectId: project.id,
-        name: project.name,
-        fps: project.fps,
-        durationMs: project.durationMs,
-        width: project.width,
-        height: project.height,
-        version: project.version,
-        sceneId: scene.id,
-        sceneData: scene.data,
-      });
-    }
+    loadProject({
+      projectId: project.id,
+      name: project.name,
+      fps: project.fps,
+      durationMs: project.durationMs,
+      width: project.width,
+      height: project.height,
+      version: project.version,
+      scenes,
+      timelineData: project.timelineData ?? null,
+    });
   }, [project, scenes, loadProject]);
 
   return (

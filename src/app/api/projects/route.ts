@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { DEFAULT_FPS, DEFAULT_CANVAS_WIDTH, DEFAULT_CANVAS_HEIGHT, FREE_TIER_MAX_DURATION_MS } from "@/lib/constants";
 import { createEmptyScene } from "@/engine/serialization";
+import { createSingleClipComposition } from "@/engine/composition";
 
 const createProjectSchema = z.object({
   name: z.string().min(1).max(200),
@@ -43,22 +44,36 @@ export async function POST(req: Request) {
 
   const { name, fps, width, height } = parsed.data;
 
-  const project = await db.project.create({
-    data: {
-      userId: session.user.id,
-      name,
-      fps: fps ?? DEFAULT_FPS,
-      width: width ?? DEFAULT_CANVAS_WIDTH,
-      height: height ?? DEFAULT_CANVAS_HEIGHT,
-      durationMs: FREE_TIER_MAX_DURATION_MS,
-      scenes: {
-        create: {
-          name: "Scene 1",
-          order: 0,
-          data: JSON.stringify(createEmptyScene()),
-        },
+  const project = await db.$transaction(async (tx) => {
+    const createdProject = await tx.project.create({
+      data: {
+        userId: session.user.id,
+        name,
+        fps: fps ?? DEFAULT_FPS,
+        width: width ?? DEFAULT_CANVAS_WIDTH,
+        height: height ?? DEFAULT_CANVAS_HEIGHT,
+        durationMs: FREE_TIER_MAX_DURATION_MS,
       },
-    },
+    });
+
+    const scene = await tx.scene.create({
+      data: {
+        projectId: createdProject.id,
+        name: "Scene 1",
+        order: 0,
+        data: JSON.stringify(createEmptyScene()),
+      },
+    });
+
+    const timelineData = createSingleClipComposition(
+      scene.id,
+      createdProject.durationMs
+    );
+
+    return tx.project.update({
+      where: { id: createdProject.id },
+      data: { timelineData: JSON.stringify(timelineData) },
+    });
   });
 
   return NextResponse.json({ id: project.id }, { status: 201 });

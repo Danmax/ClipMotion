@@ -10,6 +10,7 @@ const updateProjectSchema = z.object({
     .int()
     .refine((v) => [12, 16, 24, 30, 60].includes(v))
     .optional(),
+  timelineData: z.record(z.string(), z.unknown()).optional(),
   version: z.number().int().optional(),
 });
 
@@ -75,6 +76,9 @@ export async function PATCH(
     data: {
       ...(parsed.data.name && { name: parsed.data.name }),
       ...(parsed.data.fps && { fps: parsed.data.fps }),
+      ...(parsed.data.timelineData && {
+        timelineData: JSON.stringify(parsed.data.timelineData),
+      }),
       version: { increment: 1 },
     },
   });
