@@ -1,65 +1,137 @@
-import Image from "next/image";
+import Link from "next/link";
+import { Play, Layers, Clock, Download } from "lucide-react";
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="min-h-screen bg-gray-950 text-white">
+      {/* Header */}
+      <header className="border-b border-gray-800/50">
+        <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
+          <span className="text-xl font-bold">ClipMotion</span>
+          <div className="flex items-center gap-4">
+            <Link href="/login" className="text-sm text-gray-400 hover:text-white transition-colors">
+              Sign in
+            </Link>
+            <Link
+              href="/register"
+              className="px-4 py-1.5 rounded-lg bg-blue-600 text-sm font-medium hover:bg-blue-500 transition-colors"
+            >
+              Get Started
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      {/* Hero */}
+      <main className="max-w-6xl mx-auto px-6">
+        <section className="py-24 text-center">
+          <h1 className="text-5xl sm:text-6xl font-bold tracking-tight mb-6">
+            Animate your stories.
+            <br />
+            <span className="text-blue-400">In 30 seconds.</span>
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-10">
+            ClipMotion is a web-based animation studio for creating short animated clips.
+            Set keyframes, rig characters, and export professional-quality animations — all from your browser.
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+          <div className="flex gap-4 justify-center">
+            <Link
+              href="/register"
+              className="px-6 py-3 rounded-xl bg-blue-600 text-base font-medium hover:bg-blue-500 transition-colors"
+            >
+              Start Animating — Free
+            </Link>
+            <Link
+              href="/login"
+              className="px-6 py-3 rounded-xl bg-gray-800 text-base font-medium hover:bg-gray-700 transition-colors"
+            >
+              Sign In
+            </Link>
+          </div>
+        </section>
+
+        {/* Editor Preview */}
+        <section className="pb-20">
+          <div className="rounded-2xl border border-gray-800 bg-gray-900 overflow-hidden aspect-video flex items-center justify-center">
+            <div className="text-center">
+              <div className="w-16 h-16 rounded-2xl bg-blue-600/20 flex items-center justify-center mx-auto mb-4">
+                <Play className="w-8 h-8 text-blue-400" />
+              </div>
+              <p className="text-gray-500">Editor preview</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Features */}
+        <section className="py-20 border-t border-gray-800/50">
+          <h2 className="text-3xl font-bold text-center mb-12">
+            Everything you need to animate
+          </h2>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <FeatureCard
+              icon={<Layers className="w-6 h-6" />}
+              title="Scene Graph"
+              description="Hierarchical layer system with parent-child relationships and transform inheritance."
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            <FeatureCard
+              icon={<Clock className="w-6 h-6" />}
+              title="Timeline Editor"
+              description="Frame-by-frame keyframe animation with easing curves and onion skinning."
+            />
+            <FeatureCard
+              icon={<Play className="w-6 h-6" />}
+              title="Real-time Preview"
+              description="WebGL-accelerated playback at 12, 16, 24, 30, or 60 fps."
+            />
+            <FeatureCard
+              icon={<Download className="w-6 h-6" />}
+              title="Export"
+              description="Export to MP4, WebM, or GIF at up to 1080p resolution."
+            />
+          </div>
+        </section>
+
+        {/* CTA */}
+        <section className="py-20 text-center border-t border-gray-800/50">
+          <h2 className="text-3xl font-bold mb-4">Ready to create?</h2>
+          <p className="text-gray-400 mb-8">
+            Free accounts include 30-second clips and 720p export.
+          </p>
+          <Link
+            href="/register"
+            className="inline-block px-8 py-3 rounded-xl bg-blue-600 text-base font-medium hover:bg-blue-500 transition-colors"
           >
-            Documentation
-          </a>
-        </div>
+            Create Your Free Account
+          </Link>
+        </section>
       </main>
+
+      {/* Footer */}
+      <footer className="border-t border-gray-800/50 py-8">
+        <div className="max-w-6xl mx-auto px-6 text-center text-sm text-gray-600">
+          ClipMotion
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+function FeatureCard({
+  icon,
+  title,
+  description,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="p-6 rounded-xl border border-gray-800 bg-gray-900/50">
+      <div className="w-10 h-10 rounded-lg bg-blue-600/20 flex items-center justify-center text-blue-400 mb-4">
+        {icon}
+      </div>
+      <h3 className="font-semibold mb-2">{title}</h3>
+      <p className="text-sm text-gray-400 leading-relaxed">{description}</p>
     </div>
   );
 }
