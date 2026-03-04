@@ -46,6 +46,8 @@ export interface SceneNode {
   text?: TextProps;
   /** Face overlay (eyes + mouth) */
   face?: FaceProps;
+  /** Limbs (arms + legs) */
+  limbs?: LimbProps;
 }
 
 export type NodeType = "container" | "sprite" | "shape" | "text" | "bone";
@@ -75,6 +77,8 @@ export interface TextProps {
 
 export type EyeStyle = "dot" | "circle" | "oval" | "angry" | "closed" | "wink" | "wide";
 export type MouthStyle = "smile" | "frown" | "open" | "line" | "o" | "teeth" | "wavy" | "small-smile";
+export type EyebrowStyle = "none" | "line" | "arc" | "angry" | "sad";
+export type MouthEffect = "none" | "talk";
 export type ExpressionPreset = "neutral" | "happy" | "sad" | "angry" | "surprised" | "worried" | "smug" | "scared" | "dead";
 
 export interface FaceProps {
@@ -90,8 +94,42 @@ export interface FaceProps {
   mouthOffsetY: number;
   mouthColor: string;
   mouthCurve: number;
+  mouthEffect: MouthEffect;
+  mouthTalkSpeed: number;
+  mouthTalkAmount: number;
+  eyebrowStyle: EyebrowStyle;
+  eyebrowColor: string;
+  eyebrowThickness: number;
+  eyebrowOffsetY: number;
+  eyebrowTilt: number;
   faceScale: number;
 }
+
+export type LimbStyle = "straight" | "bent" | "none";
+
+export interface LimbProps {
+  armStyle: LimbStyle;
+  legStyle: LimbStyle;
+  limbColor: string;
+  limbThickness: number;  // 1-5
+  armLength: number;      // 0.3-1.5 multiplier
+  legLength: number;      // 0.3-1.5 multiplier
+  armSpread: number;      // 0-1 how far apart arms spread
+  legSpread: number;      // 0-1 how far apart legs spread
+  feet: boolean;          // draw small feet at end of legs
+}
+
+export const DEFAULT_LIMBS: LimbProps = {
+  armStyle: "bent",
+  legStyle: "straight",
+  limbColor: "#000000",
+  limbThickness: 3,
+  armLength: 0.8,
+  legLength: 0.9,
+  armSpread: 0.5,
+  legSpread: 0.3,
+  feet: true,
+};
 
 export const DEFAULT_FACE: FaceProps = {
   expression: "neutral",
@@ -106,6 +144,14 @@ export const DEFAULT_FACE: FaceProps = {
   mouthOffsetY: 0.15,
   mouthColor: "#000000",
   mouthCurve: 0,
+  mouthEffect: "none",
+  mouthTalkSpeed: 6,
+  mouthTalkAmount: 0.4,
+  eyebrowStyle: "none",
+  eyebrowColor: "#000000",
+  eyebrowThickness: 2,
+  eyebrowOffsetY: -0.22,
+  eyebrowTilt: 0,
   faceScale: 1.0,
 };
 

@@ -8,5 +8,6 @@ export const config = {
     "/projects/:path*",
     "/editor/:path*",
     "/settings/:path*",
+    "/characters/:path*",
   ],
 };

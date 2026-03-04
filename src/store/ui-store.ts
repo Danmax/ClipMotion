@@ -7,15 +7,11 @@ interface UIState {
   // Panel visibility
   showSceneTree: boolean;
   showProperties: boolean;
-  showTimeline: boolean;
   showAssetLibrary: boolean;
 
   // Canvas view
   canvasZoom: number;
   canvasPan: { x: number; y: number };
-
-  // Timeline view
-  timelineZoom: number; // pixels per second
 
   // Onion skinning
   onionSkinning: {
@@ -32,10 +28,9 @@ interface UIState {
   aspectRatio: AspectRatio;
 
   // Actions
-  togglePanel: (panel: "sceneTree" | "properties" | "timeline" | "assetLibrary") => void;
+  togglePanel: (panel: "sceneTree" | "properties" | "assetLibrary") => void;
   setCanvasZoom: (zoom: number) => void;
   setCanvasPan: (pan: { x: number; y: number }) => void;
-  setTimelineZoom: (zoom: number) => void;
   setOnionSkinning: (settings: Partial<UIState["onionSkinning"]>) => void;
   setActiveTool: (tool: ToolId) => void;
   setAspectRatio: (ratio: AspectRatio) => void;
@@ -44,12 +39,10 @@ interface UIState {
 export const useUIStore = create<UIState>()((set) => ({
   showSceneTree: false,
   showProperties: true,
-  showTimeline: true,
   showAssetLibrary: true,
 
   canvasZoom: 1,
   canvasPan: { x: 0, y: 0 },
-  timelineZoom: 100, // 100px per second
 
   onionSkinning: {
     enabled: false,
@@ -70,8 +63,6 @@ export const useUIStore = create<UIState>()((set) => ({
   setCanvasZoom: (zoom) => set({ canvasZoom: Math.max(0.1, Math.min(10, zoom)) }),
 
   setCanvasPan: (pan) => set({ canvasPan: pan }),
-
-  setTimelineZoom: (zoom) => set({ timelineZoom: Math.max(20, Math.min(500, zoom)) }),
 
   setOnionSkinning: (settings) =>
     set((state) => ({

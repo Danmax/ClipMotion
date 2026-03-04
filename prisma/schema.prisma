@@ -96,13 +96,14 @@ model Project {
 }
 
 model Scene {
-  id        String   @id @default(cuid())
-  projectId String
-  name      String   @default("Scene 1")
-  order     Int      @default(0)
-  data      String   @default("{}")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(cuid())
+  projectId  String
+  name       String   @default("Scene 1")
+  order      Int      @default(0)
+  data       String   @default("{}")
+  durationMs Int      @default(3000)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
@@ -139,6 +140,7 @@ model Character {
   name      String
   shapeData String   // JSON: ShapeProps
   faceData  String   // JSON: FaceProps
+  limbsData String?  // JSON: LimbProps (optional)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

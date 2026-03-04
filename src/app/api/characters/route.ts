@@ -7,6 +7,7 @@ const createCharacterSchema = z.object({
   name: z.string().min(1).max(100),
   shapeData: z.string().min(2), // JSON string
   faceData: z.string().min(2),  // JSON string
+  limbsData: z.string().min(2).optional(), // JSON string
 });
 
 export async function GET() {
@@ -38,7 +39,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const { name, shapeData, faceData } = parsed.data;
+  const { name, shapeData, faceData, limbsData } = parsed.data;
 
   const character = await db.character.create({
     data: {
@@ -46,6 +47,7 @@ export async function POST(req: Request) {
       name,
       shapeData,
       faceData,
+      limbsData: limbsData ?? null,
     },
   });
 

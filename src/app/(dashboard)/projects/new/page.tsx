@@ -9,21 +9,38 @@ export default function NewProjectPage() {
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState("");
   const [fps, setFps] = useState<number>(DEFAULT_FPS);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
+    setError(null);
 
-    const res = await fetch("/api/projects", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: name || "Untitled Project", fps }),
-    });
+    try {
+      const res = await fetch("/api/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name || "Untitled Project", fps }),
+      });
 
-    if (res.ok) {
-      const { id } = await res.json();
-      router.push(`/editor/${id}`);
-    } else {
+      if (res.ok) {
+        const { id } = await res.json();
+        router.push(`/editor/${id}`);
+        return;
+      }
+
+      const payload = (await res.json().catch(() => null)) as
+        | { error?: string; code?: string; hint?: string; details?: string }
+        | null;
+      setError(
+        payload?.hint ??
+          payload?.details ??
+          payload?.error ??
+          `Could not create project (HTTP ${res.status}).`
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Network error while creating project.");
+    } finally {
       setLoading(false);
     }
   }
@@ -73,6 +90,12 @@ export default function NewProjectPage() {
             <span className="text-white font-medium">Free tier:</span> Up to 30 seconds, 720p max export with watermark.
           </p>
         </div>
+
+        {error && (
+          <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-300">
+            {error}
+          </div>
+        )}
 
         <button
           type="submit"

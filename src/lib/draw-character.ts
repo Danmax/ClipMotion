@@ -4,7 +4,15 @@
  * character builder preview.
  */
 import { Graphics, Container } from "pixi.js";
-import type { ShapeProps, FaceProps, EyeStyle, MouthStyle } from "@/engine/types";
+import {
+  DEFAULT_FACE,
+  type ShapeProps,
+  type FaceProps,
+  type LimbProps,
+  type EyeStyle,
+  type MouthStyle,
+  type EyebrowStyle,
+} from "@/engine/types";
 
 export function hexToNumber(hex: string): number {
   return parseInt(hex.replace("#", ""), 16);
@@ -78,11 +86,12 @@ export function drawStar(
 ) {
   const step = Math.PI / points;
   g.moveTo(cx, cy - outerR);
-  for (let i = 0; i < 2 * points; i++) {
-    const r = i % 2 === 0 ? outerR : innerR;
-    const angle = -Math.PI / 2 + (i + 1) * step;
+  for (let i = 1; i <= 2 * points; i++) {
+    const r = i % 2 === 1 ? innerR : outerR;
+    const angle = -Math.PI / 2 + i * step;
     g.lineTo(cx + Math.cos(angle) * r, cy + Math.sin(angle) * r);
   }
+  g.lineTo(cx, cy - outerR);
   g.closePath();
 }
 
@@ -144,27 +153,113 @@ export function drawFace(
   container: Container,
   face: FaceProps,
   shapeW: number,
-  shapeH: number
+  shapeH: number,
+  timeMs = Date.now()
 ) {
+  const resolvedFace: FaceProps = { ...DEFAULT_FACE, ...face };
   const g = new Graphics();
-  const scale = face.faceScale;
+  const scale = resolvedFace.faceScale;
   const baseSize = Math.min(shapeW, shapeH);
 
-  const baseEyeRadius = baseSize * 0.06 * face.eyeSize * scale;
-  const baseSpacing = shapeW * 0.15 * face.eyeSpacing * scale;
-  const eyeY = shapeH * face.eyeOffsetY;
-  const eyeColor = hexToNumber(face.eyeColor);
+  const baseEyeRadius = baseSize * 0.06 * resolvedFace.eyeSize * scale;
+  const baseSpacing = shapeW * 0.15 * resolvedFace.eyeSpacing * scale;
+  const eyeY = shapeH * resolvedFace.eyeOffsetY;
+  const eyeColor = hexToNumber(resolvedFace.eyeColor);
 
-  drawEye(g, -baseSpacing, eyeY, baseEyeRadius, face.eyeStyle, eyeColor, face.pupilSize, true);
-  drawEye(g, baseSpacing, eyeY, baseEyeRadius, face.eyeStyle, eyeColor, face.pupilSize, false);
+  const browColor = hexToNumber(resolvedFace.eyebrowColor);
+  const browY = shapeH * (resolvedFace.eyeOffsetY + resolvedFace.eyebrowOffsetY);
+  drawEyebrows(
+    g,
+    resolvedFace.eyebrowStyle,
+    baseSpacing,
+    browY,
+    baseEyeRadius * 1.8,
+    browColor,
+    resolvedFace.eyebrowThickness,
+    resolvedFace.eyebrowTilt
+  );
 
-  const mouthY = shapeH * face.mouthOffsetY;
-  const mouthW = shapeW * 0.2 * face.mouthSize * scale;
-  const mouthColor = hexToNumber(face.mouthColor);
+  drawEye(g, -baseSpacing, eyeY, baseEyeRadius, resolvedFace.eyeStyle, eyeColor, resolvedFace.pupilSize, true);
+  drawEye(g, baseSpacing, eyeY, baseEyeRadius, resolvedFace.eyeStyle, eyeColor, resolvedFace.pupilSize, false);
 
-  drawMouth(g, 0, mouthY, mouthW, face.mouthStyle, mouthColor, face.mouthCurve);
+  const mouthY = shapeH * resolvedFace.mouthOffsetY;
+  const talkSpeed = Math.max(0.1, resolvedFace.mouthTalkSpeed);
+  const talkOsc = Math.sin((timeMs / 1000) * talkSpeed * Math.PI * 2);
+  const talkOpen =
+    resolvedFace.mouthEffect === "talk"
+      ? ((talkOsc + 1) / 2) * Math.max(0, resolvedFace.mouthTalkAmount)
+      : 0;
+  const mouthW = shapeW * 0.2 * resolvedFace.mouthSize * scale * (1 + talkOpen * 0.4);
+  const mouthColor = hexToNumber(resolvedFace.mouthColor);
+  const mouthCurve =
+    resolvedFace.mouthCurve +
+    (resolvedFace.mouthEffect === "talk"
+      ? Math.sin((timeMs / 1000) * talkSpeed) * 0.2 * resolvedFace.mouthTalkAmount
+      : 0);
+
+  drawMouth(g, 0, mouthY, mouthW, resolvedFace.mouthStyle, mouthColor, mouthCurve, talkOpen);
 
   container.addChild(g);
+}
+
+function drawEyebrows(
+  g: Graphics,
+  style: EyebrowStyle,
+  eyeSpacing: number,
+  y: number,
+  width: number,
+  color: number,
+  thickness: number,
+  tilt: number
+) {
+  if (style === "none") return;
+
+  const leftX = -eyeSpacing;
+  const rightX = eyeSpacing;
+  const half = width / 2;
+  const t = Math.max(-1, Math.min(1, tilt));
+  const baseTilt = t * 0.45;
+
+  let leftAngle = -baseTilt;
+  let rightAngle = baseTilt;
+  if (style === "angry") {
+    leftAngle = 0.65 + baseTilt;
+    rightAngle = -0.65 - baseTilt;
+  } else if (style === "sad") {
+    leftAngle = -0.65 + baseTilt;
+    rightAngle = 0.65 - baseTilt;
+  }
+
+  if (style === "arc") {
+    const arcH = Math.max(1, half * 0.45);
+    g.moveTo(leftX - half, y);
+    g.quadraticCurveTo(leftX, y - arcH, leftX + half, y);
+    g.stroke({ width: thickness, color });
+
+    g.moveTo(rightX - half, y);
+    g.quadraticCurveTo(rightX, y - arcH, rightX + half, y);
+    g.stroke({ width: thickness, color });
+    return;
+  }
+
+  drawBrowLine(g, leftX, y, half, leftAngle, thickness, color);
+  drawBrowLine(g, rightX, y, half, rightAngle, thickness, color);
+}
+
+function drawBrowLine(
+  g: Graphics,
+  cx: number,
+  cy: number,
+  halfLength: number,
+  angle: number,
+  thickness: number,
+  color: number
+) {
+  const dx = Math.cos(angle) * halfLength;
+  const dy = Math.sin(angle) * halfLength;
+  g.moveTo(cx - dx, cy - dy);
+  g.lineTo(cx + dx, cy + dy);
+  g.stroke({ width: thickness, color });
 }
 
 export function drawEye(
@@ -246,88 +341,235 @@ export function drawMouth(
   width: number,
   style: MouthStyle,
   color: number,
-  curve: number
+  curve: number,
+  talkOpen = 0
 ) {
   const halfW = width / 2;
   const curveAmount = halfW * curve;
+  const openAmount = Math.max(0, talkOpen);
 
   switch (style) {
-    case "line":
+    case "line": {
       g.moveTo(cx - halfW, cy);
-      g.lineTo(cx + halfW, cy);
-      g.closePath();
+      if (openAmount > 0.02) {
+        g.quadraticCurveTo(cx, cy + halfW * 0.45 * openAmount, cx + halfW, cy);
+      } else {
+        g.lineTo(cx + halfW, cy);
+      }
       g.stroke({ width: 2, color });
       break;
+    }
     case "smile":
       g.moveTo(cx - halfW, cy);
-      g.quadraticCurveTo(cx, cy + Math.abs(curveAmount) + halfW * 0.5, cx + halfW, cy);
-      g.closePath();
+      g.quadraticCurveTo(
+        cx,
+        cy + Math.abs(curveAmount) + halfW * (0.5 + openAmount * 0.5),
+        cx + halfW,
+        cy
+      );
       g.stroke({ width: 2, color });
       break;
     case "frown":
       g.moveTo(cx - halfW, cy);
-      g.quadraticCurveTo(cx, cy - Math.abs(curveAmount) - halfW * 0.3, cx + halfW, cy);
-      g.closePath();
+      g.quadraticCurveTo(
+        cx,
+        cy - Math.abs(curveAmount) - halfW * (0.3 - openAmount * 0.2),
+        cx + halfW,
+        cy
+      );
       g.stroke({ width: 2, color });
       break;
     case "open":
-      g.ellipse(cx, cy, halfW * 0.8, halfW * 0.6);
+      g.ellipse(cx, cy, halfW * 0.8, halfW * (0.6 + openAmount * 0.9));
       g.fill({ color });
       break;
     case "o":
-      g.circle(cx, cy, halfW * 0.5);
+      g.ellipse(cx, cy, halfW * (0.5 + openAmount * 0.15), halfW * (0.5 + openAmount * 0.4));
       g.stroke({ width: 2, color });
       break;
     case "teeth": {
+      const teethDepth = halfW * (0.7 + openAmount * 0.8);
       g.moveTo(cx - halfW, cy);
-      g.quadraticCurveTo(cx, cy + halfW * 0.7, cx + halfW, cy);
+      g.quadraticCurveTo(cx, cy + teethDepth, cx + halfW, cy);
       g.lineTo(cx - halfW, cy);
       g.closePath();
       g.fill({ color: 0xffffff });
       g.moveTo(cx - halfW, cy);
-      g.quadraticCurveTo(cx, cy + halfW * 0.7, cx + halfW, cy);
-      g.closePath();
+      g.quadraticCurveTo(cx, cy + teethDepth, cx + halfW, cy);
       g.stroke({ width: 2, color });
-      g.moveTo(cx - halfW * 0.8, cy + halfW * 0.15);
-      g.lineTo(cx + halfW * 0.8, cy + halfW * 0.15);
-      g.closePath();
+      g.moveTo(cx - halfW * 0.8, cy + teethDepth * 0.22);
+      g.lineTo(cx + halfW * 0.8, cy + teethDepth * 0.22);
       g.stroke({ width: 1, color });
       break;
     }
     case "wavy":
       g.moveTo(cx - halfW, cy);
       g.bezierCurveTo(
-        cx - halfW * 0.3, cy - halfW * 0.3,
-        cx + halfW * 0.3, cy + halfW * 0.3,
+        cx - halfW * 0.3, cy - halfW * (0.3 + openAmount * 0.2),
+        cx + halfW * 0.3, cy + halfW * (0.3 + openAmount * 0.4),
         cx + halfW, cy
       );
-      g.closePath();
       g.stroke({ width: 2, color });
       break;
     case "small-smile":
       g.moveTo(cx - halfW * 0.4, cy);
-      g.quadraticCurveTo(cx, cy + halfW * 0.3, cx + halfW * 0.5, cy - halfW * 0.1);
-      g.closePath();
+      g.quadraticCurveTo(
+        cx,
+        cy + halfW * (0.3 + openAmount * 0.5),
+        cx + halfW * 0.5,
+        cy - halfW * (0.1 - openAmount * 0.1)
+      );
       g.stroke({ width: 2, color });
       break;
   }
 }
 
 /**
- * Convenience: draw a complete character (shape + optional face) into a container.
+ * Draw Object Show-style limbs (arms + legs) around a shape body.
+ */
+export function drawLimbs(
+  container: Container,
+  limbs: LimbProps,
+  shapeW: number,
+  shapeH: number
+) {
+  const g = new Graphics();
+  const color = hexToNumber(limbs.limbColor);
+  const sw = limbs.limbThickness;
+
+  // Arm attachment points: sides of the body, slightly below center
+  if (limbs.armStyle !== "none") {
+    const armAttachY = shapeH * 0.05;
+    const armLen = shapeH * 0.4 * limbs.armLength;
+    const spreadX = shapeW * 0.15 * limbs.armSpread;
+
+    // Left arm
+    const lax = -shapeW / 2;
+    if (limbs.armStyle === "bent") {
+      const midX = lax - armLen * 0.5;
+      const midY = armAttachY + armLen * 0.3;
+      const endX = lax - spreadX - armLen * 0.3;
+      const endY = armAttachY + armLen * 0.8;
+      g.moveTo(lax, armAttachY);
+      g.lineTo(midX, midY);
+      g.moveTo(midX, midY);
+      g.lineTo(endX, endY);
+      g.stroke({ width: sw, color });
+    } else {
+      const endX = lax - armLen * 0.6 - spreadX;
+      const endY = armAttachY + armLen * 0.7;
+      g.moveTo(lax, armAttachY);
+      g.lineTo(endX, endY);
+      g.stroke({ width: sw, color });
+    }
+
+    // Right arm
+    const rax = shapeW / 2;
+    if (limbs.armStyle === "bent") {
+      const midX = rax + armLen * 0.5;
+      const midY = armAttachY + armLen * 0.3;
+      const endX = rax + spreadX + armLen * 0.3;
+      const endY = armAttachY + armLen * 0.8;
+      g.moveTo(rax, armAttachY);
+      g.lineTo(midX, midY);
+      g.moveTo(midX, midY);
+      g.lineTo(endX, endY);
+      g.stroke({ width: sw, color });
+    } else {
+      const endX = rax + armLen * 0.6 + spreadX;
+      const endY = armAttachY + armLen * 0.7;
+      g.moveTo(rax, armAttachY);
+      g.lineTo(endX, endY);
+      g.stroke({ width: sw, color });
+    }
+  }
+
+  // Leg attachment points: bottom of the body
+  if (limbs.legStyle !== "none") {
+    const legAttachY = shapeH / 2;
+    const legLen = shapeH * 0.45 * limbs.legLength;
+    // Gap from center: small base gap + spread-controlled extra
+    const legGap = shapeW * 0.08 + shapeW * 0.15 * limbs.legSpread;
+    const footW = sw * 2.5;
+
+    // Left leg
+    if (limbs.legStyle === "bent") {
+      const kneeX = -legGap - legLen * 0.12;
+      const kneeY = legAttachY + legLen * 0.5;
+      const endX = -legGap;
+      const endY = legAttachY + legLen;
+      g.moveTo(-legGap, legAttachY);
+      g.lineTo(kneeX, kneeY);
+      g.moveTo(kneeX, kneeY);
+      g.lineTo(endX, endY);
+      g.stroke({ width: sw, color });
+      if (limbs.feet) {
+        g.ellipse(endX, endY + footW * 0.3, footW, footW * 0.4);
+        g.fill({ color });
+      }
+    } else {
+      const endY = legAttachY + legLen;
+      g.moveTo(-legGap, legAttachY);
+      g.lineTo(-legGap, endY);
+      g.stroke({ width: sw, color });
+      if (limbs.feet) {
+        g.ellipse(-legGap, endY + footW * 0.3, footW, footW * 0.4);
+        g.fill({ color });
+      }
+    }
+
+    // Right leg
+    if (limbs.legStyle === "bent") {
+      const kneeX = legGap + legLen * 0.12;
+      const kneeY = legAttachY + legLen * 0.5;
+      const endX = legGap;
+      const endY = legAttachY + legLen;
+      g.moveTo(legGap, legAttachY);
+      g.lineTo(kneeX, kneeY);
+      g.moveTo(kneeX, kneeY);
+      g.lineTo(endX, endY);
+      g.stroke({ width: sw, color });
+      if (limbs.feet) {
+        g.ellipse(endX, endY + footW * 0.3, footW, footW * 0.4);
+        g.fill({ color });
+      }
+    } else {
+      const endY = legAttachY + legLen;
+      g.moveTo(legGap, legAttachY);
+      g.lineTo(legGap, endY);
+      g.stroke({ width: sw, color });
+      if (limbs.feet) {
+        g.ellipse(legGap, endY + footW * 0.3, footW, footW * 0.4);
+        g.fill({ color });
+      }
+    }
+  }
+
+  container.addChild(g);
+}
+
+/**
+ * Convenience: draw a complete character (shape + optional face + optional limbs) into a container.
  * Returns { w, h } of the drawn shape.
  */
 export function drawCharacter(
   container: Container,
   shape: ShapeProps,
-  face?: FaceProps
+  face?: FaceProps,
+  limbs?: LimbProps,
+  timeMs = Date.now()
 ): { w: number; h: number } {
+  // Draw limbs behind the body
+  if (limbs) {
+    drawLimbs(container, limbs, shape.width, shape.height);
+  }
+
   const body = new Graphics();
   const { w, h } = drawShapeBody(body, shape);
   container.addChild(body);
 
   if (face) {
-    drawFace(container, face, w, h);
+    drawFace(container, face, w, h, timeMs);
   }
 
   return { w, h };

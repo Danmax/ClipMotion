@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 const updateSceneSchema = z.object({
   sceneId: z.string(),
   data: z.record(z.string(), z.unknown()),
+  durationMs: z.number().int().min(500).optional(),
 });
 
 export async function PATCH(
@@ -39,6 +40,7 @@ export async function PATCH(
     where: { id: parsed.data.sceneId },
     data: {
       data: JSON.stringify(parsed.data.data),
+      ...(parsed.data.durationMs !== undefined && { durationMs: parsed.data.durationMs }),
       updatedAt: new Date(),
     },
   });

@@ -3,10 +3,11 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { Plus } from "lucide-react";
 import { CharacterCard } from "@/components/character-builder/character-card";
+import { redirect } from "next/navigation";
 
 export default async function CharactersPage() {
   const session = await auth();
-  if (!session?.user?.id) return null;
+  if (!session?.user?.id) redirect("/login");
 
   const characters = await db.character.findMany({
     where: { userId: session.user.id },
@@ -29,6 +30,25 @@ export default async function CharactersPage() {
           <Plus className="w-4 h-4" />
           Create Character
         </Link>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+        <div className="rounded-lg border border-gray-800 bg-gray-900/60 px-4 py-3">
+          <p className="text-[11px] uppercase tracking-wider text-gray-500">Total Characters</p>
+          <p className="mt-1 text-xl font-semibold text-white">{characters.length}</p>
+        </div>
+        <div className="rounded-lg border border-gray-800 bg-gray-900/60 px-4 py-3">
+          <p className="text-[11px] uppercase tracking-wider text-gray-500">Latest Update</p>
+          <p className="mt-1 text-sm font-medium text-gray-200">
+            {characters[0]
+              ? new Date(characters[0].updatedAt).toLocaleDateString()
+              : "No characters yet"}
+          </p>
+        </div>
+        <div className="rounded-lg border border-gray-800 bg-gray-900/60 px-4 py-3">
+          <p className="text-[11px] uppercase tracking-wider text-gray-500">Builder Access</p>
+          <p className="mt-1 text-sm font-medium text-gray-200">Ready to create and edit</p>
+        </div>
       </div>
 
       {characters.length === 0 ? (

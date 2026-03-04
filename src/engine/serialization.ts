@@ -71,6 +71,14 @@ const facePropsSchema = z.object({
   mouthOffsetY: z.number(),
   mouthColor: z.string(),
   mouthCurve: z.number(),
+  mouthEffect: z.enum(["none", "talk"]).default("none"),
+  mouthTalkSpeed: z.number().default(6),
+  mouthTalkAmount: z.number().default(0.4),
+  eyebrowStyle: z.enum(["none", "line", "arc", "angry", "sad"]).default("none"),
+  eyebrowColor: z.string().default("#000000"),
+  eyebrowThickness: z.number().default(2),
+  eyebrowOffsetY: z.number().default(-0.22),
+  eyebrowTilt: z.number().default(0),
   faceScale: z.number(),
 });
 

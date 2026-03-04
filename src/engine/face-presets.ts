@@ -7,6 +7,8 @@ export const EXPRESSION_PRESETS: Record<ExpressionPreset, Partial<FaceProps>> = 
     eyeStyle: "dot",
     mouthStyle: "line",
     mouthCurve: 0,
+    eyebrowStyle: "line",
+    eyebrowTilt: 0,
   },
   happy: {
     expression: "happy",
@@ -14,6 +16,8 @@ export const EXPRESSION_PRESETS: Record<ExpressionPreset, Partial<FaceProps>> = 
     mouthStyle: "smile",
     mouthCurve: 0.8,
     mouthSize: 1.2,
+    eyebrowStyle: "arc",
+    eyebrowTilt: 0.2,
   },
   sad: {
     expression: "sad",
@@ -21,6 +25,8 @@ export const EXPRESSION_PRESETS: Record<ExpressionPreset, Partial<FaceProps>> = 
     mouthStyle: "frown",
     mouthCurve: -0.6,
     eyeOffsetY: -0.05,
+    eyebrowStyle: "sad",
+    eyebrowTilt: -0.3,
   },
   angry: {
     expression: "angry",
@@ -28,6 +34,8 @@ export const EXPRESSION_PRESETS: Record<ExpressionPreset, Partial<FaceProps>> = 
     mouthStyle: "frown",
     mouthCurve: -0.4,
     mouthSize: 0.8,
+    eyebrowStyle: "angry",
+    eyebrowTilt: 0.8,
   },
   surprised: {
     expression: "surprised",
@@ -35,6 +43,10 @@ export const EXPRESSION_PRESETS: Record<ExpressionPreset, Partial<FaceProps>> = 
     mouthStyle: "o",
     eyeSize: 1.4,
     mouthSize: 1.3,
+    mouthEffect: "talk",
+    mouthTalkAmount: 0.5,
+    eyebrowStyle: "line",
+    eyebrowTilt: 0.1,
   },
   worried: {
     expression: "worried",
@@ -42,6 +54,8 @@ export const EXPRESSION_PRESETS: Record<ExpressionPreset, Partial<FaceProps>> = 
     mouthStyle: "wavy",
     mouthCurve: -0.3,
     eyeSize: 0.9,
+    eyebrowStyle: "sad",
+    eyebrowTilt: -0.4,
   },
   smug: {
     expression: "smug",
@@ -49,6 +63,8 @@ export const EXPRESSION_PRESETS: Record<ExpressionPreset, Partial<FaceProps>> = 
     mouthStyle: "small-smile",
     mouthCurve: 0.5,
     mouthOffsetY: 0.18,
+    eyebrowStyle: "line",
+    eyebrowTilt: 0.45,
   },
   scared: {
     expression: "scared",
@@ -56,6 +72,10 @@ export const EXPRESSION_PRESETS: Record<ExpressionPreset, Partial<FaceProps>> = 
     mouthStyle: "wavy",
     eyeSize: 1.5,
     mouthSize: 1.1,
+    mouthEffect: "talk",
+    mouthTalkAmount: 0.7,
+    eyebrowStyle: "sad",
+    eyebrowTilt: -0.6,
   },
   dead: {
     expression: "dead",
@@ -63,6 +83,7 @@ export const EXPRESSION_PRESETS: Record<ExpressionPreset, Partial<FaceProps>> = 
     mouthStyle: "line",
     mouthCurve: 0,
     eyeSize: 1.2,
+    eyebrowStyle: "none",
   },
 };
 

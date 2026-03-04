@@ -251,7 +251,7 @@ export function updateTransform(
 export function updateNode(
   doc: SceneDocument,
   nodeId: string,
-  updates: Partial<Pick<SceneNode, "name" | "visible" | "locked" | "showLabel" | "pivot" | "assetId" | "shape" | "text" | "face">>
+  updates: Partial<Pick<SceneNode, "name" | "visible" | "locked" | "showLabel" | "layer" | "pivot" | "assetId" | "shape" | "text" | "face" | "limbs">>
 ): SceneDocument {
   const node = doc.nodes[nodeId];
   if (!node) throw new Error(`Node ${nodeId} not found`);

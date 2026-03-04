@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
+import { nanoid } from "nanoid";
 import type {
   SceneDocument,
   SceneNode,
@@ -10,6 +11,7 @@ import type {
   ShapeProps,
   TextProps,
   FaceProps,
+  LimbProps,
   TimelineComposition,
 } from "@/engine/types";
 import { EMPTY_TIMELINE_COMPOSITION } from "@/engine/types";
@@ -37,12 +39,19 @@ import {
   normalizeComposition,
   computeCompositionDuration,
 } from "@/engine/composition";
+import {
+  applyPresetAnimation,
+  clearNodeAnimations,
+  type AnimationPresetId,
+  type PresetAnimationOptions,
+} from "@/engine/animation-presets";
 
 interface EditorSceneState {
   id: string;
   name: string;
   order: number;
   document: SceneDocument;
+  durationMs: number;
 }
 
 interface EditorState {
@@ -91,7 +100,8 @@ interface EditorState {
   removeNodeById: (nodeId: string) => void;
   updateNodeTransform: (nodeId: string, transform: Partial<Transform>) => void;
   addShapeNodeWithFace: (name: string, shape: ShapeProps, face: FaceProps, transform?: Partial<Transform>) => string;
-  updateNodeProps: (nodeId: string, updates: Partial<Pick<SceneNode, "name" | "visible" | "locked" | "showLabel" | "layer" | "pivot" | "assetId" | "shape" | "text" | "face">>) => void;
+  addCharacterNode: (name: string, shape: ShapeProps, face: FaceProps, limbs: LimbProps, transform?: Partial<Transform>) => string;
+  updateNodeProps: (nodeId: string, updates: Partial<Pick<SceneNode, "name" | "visible" | "locked" | "showLabel" | "layer" | "pivot" | "assetId" | "shape" | "text" | "face" | "limbs">>) => void;
   reparentNodeTo: (nodeId: string, newParentId: string, index?: number) => void;
   reorderChildNode: (parentId: string, fromIndex: number, toIndex: number) => void;
   duplicateNodeById: (nodeId: string) => string | null;
@@ -101,6 +111,18 @@ interface EditorState {
   removeKeyframeById: (nodeId: string, property: AnimatableProperty, keyframeId: string) => void;
   moveKeyframeTo: (nodeId: string, property: AnimatableProperty, keyframeId: string, newTimeMs: number) => void;
   updateKeyframeEasingById: (nodeId: string, property: AnimatableProperty, keyframeId: string, easing: EasingDefinition) => void;
+
+  // Preset animation
+  applyPreset: (nodeId: string, presetId: AnimationPresetId, options?: PresetAnimationOptions) => void;
+  clearAnimations: (nodeId: string) => void;
+
+  // Scene CRUD
+  addScene: () => string;
+  removeScene: (sceneId: string) => void;
+  duplicateScene: (sceneId: string) => string;
+  renameScene: (sceneId: string, name: string) => void;
+  reorderScenes: (fromIndex: number, toIndex: number) => void;
+  setSceneDuration: (sceneId: string, durationMs: number) => void;
 
   // Project settings
   setFps: (fps: number) => void;
@@ -188,6 +210,7 @@ export const useEditorStore = create<EditorState>()(
         name: scene.name,
         order: scene.order,
         document: tryDeserializeSceneData(scene.data),
+        durationMs: 3000,
       }));
 
       const scenesById: Record<string, EditorSceneState> = {};
@@ -288,6 +311,28 @@ export const useEditorStore = create<EditorState>()(
       const node = createNode(name, "shape" as NodeType, {
         shape,
         face,
+        transform: {
+          x: 0,
+          y: 0,
+          rotation: 0,
+          scaleX: 1,
+          scaleY: 1,
+          opacity: 1,
+          ...transform,
+        },
+      });
+      set((state) => {
+        const nextDoc = addNode(state.document, node, state.document.rootNodeId);
+        applyDocumentToActiveScene(state, nextDoc);
+      });
+      return node.id;
+    },
+
+    addCharacterNode: (name, shape, face, limbs, transform) => {
+      const node = createNode(name, "shape" as NodeType, {
+        shape,
+        face,
+        limbs,
         transform: {
           x: 0,
           y: 0,
@@ -406,6 +451,140 @@ export const useEditorStore = create<EditorState>()(
         applyDocumentToActiveScene(state, nextDoc);
       });
     },
+
+    // ── Preset Animation ──────────────────────────────────────
+
+    applyPreset: (nodeId, presetId, options) => {
+      set((state) => {
+        const node = state.document.nodes[nodeId];
+        if (!node) return;
+
+        const context = {
+          nodeTransform: { ...node.transform },
+          canvasWidth: state.canvasWidth,
+          canvasHeight: state.canvasHeight,
+        };
+
+        const nextDoc = applyPresetAnimation(
+          state.document,
+          nodeId,
+          presetId,
+          options,
+          context
+        );
+        applyDocumentToActiveScene(state, nextDoc);
+      });
+    },
+
+    clearAnimations: (nodeId) => {
+      set((state) => {
+        const nextDoc = clearNodeAnimations(state.document, nodeId);
+        applyDocumentToActiveScene(state, nextDoc);
+      });
+    },
+
+    // ── Scene CRUD ───────────────────────────────────────────
+
+    addScene: () => {
+      const id = nanoid();
+      set((state) => {
+        const order = state.sceneOrder.length;
+        const newScene: EditorSceneState = {
+          id,
+          name: `Scene ${order + 1}`,
+          order,
+          document: createSceneDocument(),
+          durationMs: 3000,
+        };
+        state.scenes[id] = newScene;
+        state.sceneOrder.push(id);
+        state.dirty = true;
+      });
+      return id;
+    },
+
+    removeScene: (sceneId) => {
+      set((state) => {
+        if (state.sceneOrder.length <= 1) return; // keep at least one scene
+        const idx = state.sceneOrder.indexOf(sceneId);
+        if (idx === -1) return;
+
+        delete state.scenes[sceneId];
+        state.sceneOrder.splice(idx, 1);
+
+        // Re-number remaining scenes
+        state.sceneOrder.forEach((sid, i) => {
+          if (state.scenes[sid]) state.scenes[sid].order = i;
+        });
+
+        // Switch active scene if the removed one was active
+        if (state.sceneId === sceneId) {
+          const newActiveIdx = Math.min(idx, state.sceneOrder.length - 1);
+          const newActiveId = state.sceneOrder[newActiveIdx];
+          state.sceneId = newActiveId;
+          state.document = state.scenes[newActiveId].document;
+        }
+        state.dirty = true;
+      });
+    },
+
+    duplicateScene: (sceneId) => {
+      const newId = nanoid();
+      set((state) => {
+        const source = state.scenes[sceneId];
+        if (!source) return;
+
+        const idx = state.sceneOrder.indexOf(sceneId);
+        const newScene: EditorSceneState = {
+          id: newId,
+          name: `${source.name} Copy`,
+          order: idx + 1,
+          document: JSON.parse(JSON.stringify(source.document)),
+          durationMs: source.durationMs,
+        };
+
+        state.scenes[newId] = newScene;
+        state.sceneOrder.splice(idx + 1, 0, newId);
+
+        // Re-number
+        state.sceneOrder.forEach((sid, i) => {
+          if (state.scenes[sid]) state.scenes[sid].order = i;
+        });
+        state.dirty = true;
+      });
+      return newId;
+    },
+
+    renameScene: (sceneId, name) => {
+      set((state) => {
+        if (state.scenes[sceneId]) {
+          state.scenes[sceneId].name = name;
+          state.dirty = true;
+        }
+      });
+    },
+
+    reorderScenes: (fromIndex, toIndex) => {
+      set((state) => {
+        const [moved] = state.sceneOrder.splice(fromIndex, 1);
+        state.sceneOrder.splice(toIndex, 0, moved);
+        state.sceneOrder.forEach((sid, i) => {
+          if (state.scenes[sid]) state.scenes[sid].order = i;
+        });
+        state.dirty = true;
+      });
+    },
+
+    setSceneDuration: (sceneId, durationMs) => {
+      set((state) => {
+        if (state.scenes[sceneId]) {
+          state.scenes[sceneId].durationMs = Math.max(500, durationMs);
+          state.dirty = true;
+        }
+      });
+    },
+
+    // ── Project Settings ─────────────────────────────────────
 
     setFps: (fps) => {
       set((state) => {

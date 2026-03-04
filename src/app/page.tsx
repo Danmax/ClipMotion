@@ -1,7 +1,44 @@
 import Link from "next/link";
 import { Play, Layers, Clock, Download } from "lucide-react";
+import { auth } from "@/auth";
+import { db } from "@/lib/db";
 
-export default function Home() {
+function getCharacterFill(shapeData: string): string {
+  try {
+    const parsed = JSON.parse(shapeData) as { fill?: unknown };
+    if (typeof parsed.fill === "string" && parsed.fill.length > 0) {
+      return parsed.fill;
+    }
+  } catch {
+    // ignore malformed legacy data
+  }
+  return "#64748b";
+}
+
+export default async function Home() {
+  const session = await auth();
+  const isLoggedIn = !!session?.user?.id;
+
+  let characters: {
+    id: string;
+    name: string;
+    shapeData: string;
+    updatedAt: Date;
+  }[] = [];
+
+  if (isLoggedIn) {
+    try {
+      characters = await db.character.findMany({
+        where: { userId: session.user.id },
+        orderBy: { updatedAt: "desc" },
+        take: 6,
+      });
+    } catch (error) {
+      console.error("Home characters query failed:", error);
+      characters = [];
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-950 text-white">
       {/* Header */}
@@ -9,15 +46,31 @@ export default function Home() {
         <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between">
           <span className="text-xl font-bold">ClipMotion</span>
           <div className="flex items-center gap-4">
-            <Link href="/login" className="text-sm text-gray-400 hover:text-white transition-colors">
-              Sign in
-            </Link>
-            <Link
-              href="/register"
-              className="px-4 py-1.5 rounded-lg bg-blue-600 text-sm font-medium hover:bg-blue-500 transition-colors"
-            >
-              Get Started
-            </Link>
+            {isLoggedIn ? (
+              <>
+                <Link href="/projects" className="text-sm text-gray-400 hover:text-white transition-colors">
+                  Dashboard
+                </Link>
+                <Link
+                  href="/characters"
+                  className="px-4 py-1.5 rounded-lg bg-blue-600 text-sm font-medium hover:bg-blue-500 transition-colors"
+                >
+                  Characters
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link href="/login" className="text-sm text-gray-400 hover:text-white transition-colors">
+                  Sign in
+                </Link>
+                <Link
+                  href="/register"
+                  className="px-4 py-1.5 rounded-lg bg-blue-600 text-sm font-medium hover:bg-blue-500 transition-colors"
+                >
+                  Get Started
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -35,20 +88,82 @@ export default function Home() {
             Set keyframes, rig characters, and export professional-quality animations — all from your browser.
           </p>
           <div className="flex gap-4 justify-center">
-            <Link
-              href="/register"
-              className="px-6 py-3 rounded-xl bg-blue-600 text-base font-medium hover:bg-blue-500 transition-colors"
-            >
-              Start Animating — Free
-            </Link>
-            <Link
-              href="/login"
-              className="px-6 py-3 rounded-xl bg-gray-800 text-base font-medium hover:bg-gray-700 transition-colors"
-            >
-              Sign In
-            </Link>
+            {isLoggedIn ? (
+              <>
+                <Link
+                  href="/projects"
+                  className="px-6 py-3 rounded-xl bg-blue-600 text-base font-medium hover:bg-blue-500 transition-colors"
+                >
+                  Open Dashboard
+                </Link>
+                <Link
+                  href="/characters/new"
+                  className="px-6 py-3 rounded-xl bg-gray-800 text-base font-medium hover:bg-gray-700 transition-colors"
+                >
+                  Create Character
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/register"
+                  className="px-6 py-3 rounded-xl bg-blue-600 text-base font-medium hover:bg-blue-500 transition-colors"
+                >
+                  Start Animating - Free
+                </Link>
+                <Link
+                  href="/login"
+                  className="px-6 py-3 rounded-xl bg-gray-800 text-base font-medium hover:bg-gray-700 transition-colors"
+                >
+                  Sign In
+                </Link>
+              </>
+            )}
           </div>
         </section>
+
+        {isLoggedIn && (
+          <section className="pb-20">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold">Current Characters</h2>
+              <Link href="/characters" className="text-sm text-blue-400 hover:text-blue-300 transition-colors">
+                View all
+              </Link>
+            </div>
+
+            {characters.length === 0 ? (
+              <div className="rounded-xl border border-gray-800 bg-gray-900/60 p-8 text-center">
+                <p className="text-sm text-gray-400">You have no characters yet.</p>
+                <Link
+                  href="/characters/new"
+                  className="inline-flex mt-4 px-4 py-2 rounded-lg bg-blue-600 text-sm font-medium hover:bg-blue-500 transition-colors"
+                >
+                  Create your first character
+                </Link>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                {characters.map((character) => {
+                  const fill = getCharacterFill(character.shapeData);
+                  return (
+                    <Link
+                      key={character.id}
+                      href={`/characters/${character.id}/edit`}
+                      className="group rounded-xl border border-gray-800 bg-gray-900/60 hover:border-gray-700 transition-colors overflow-hidden"
+                    >
+                      <div className="h-20 flex items-center justify-center" style={{ backgroundColor: `${fill}22` }}>
+                        <div className="w-10 h-10 rounded-md" style={{ backgroundColor: fill }} />
+                      </div>
+                      <div className="px-2.5 py-2">
+                        <p className="text-xs font-medium text-white truncate">{character.name}</p>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        )}
 
         {/* Editor Preview */}
         <section className="pb-20">
@@ -92,18 +207,20 @@ export default function Home() {
         </section>
 
         {/* CTA */}
-        <section className="py-20 text-center border-t border-gray-800/50">
-          <h2 className="text-3xl font-bold mb-4">Ready to create?</h2>
-          <p className="text-gray-400 mb-8">
-            Free accounts include 30-second clips and 720p export.
-          </p>
-          <Link
-            href="/register"
-            className="inline-block px-8 py-3 rounded-xl bg-blue-600 text-base font-medium hover:bg-blue-500 transition-colors"
-          >
-            Create Your Free Account
-          </Link>
-        </section>
+        {!isLoggedIn && (
+          <section className="py-20 text-center border-t border-gray-800/50">
+            <h2 className="text-3xl font-bold mb-4">Ready to create?</h2>
+            <p className="text-gray-400 mb-8">
+              Free accounts include 30-second clips and 720p export.
+            </p>
+            <Link
+              href="/register"
+              className="inline-block px-8 py-3 rounded-xl bg-blue-600 text-base font-medium hover:bg-blue-500 transition-colors"
+            >
+              Create Your Free Account
+            </Link>
+          </section>
+        )}
       </main>
 
       {/* Footer */}

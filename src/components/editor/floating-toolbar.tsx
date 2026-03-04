@@ -4,20 +4,18 @@ import {
   Layers,
   SlidersHorizontal,
   Shapes,
-  Clock,
 } from "lucide-react";
 import { useUIStore } from "@/store/ui-store";
 
 const PANEL_TOGGLES: {
-  panel: "sceneTree" | "properties" | "assetLibrary" | "timeline";
+  panel: "sceneTree" | "properties" | "assetLibrary";
   icon: React.ElementType;
   label: string;
-  stateKey: "showSceneTree" | "showProperties" | "showAssetLibrary" | "showTimeline";
+  stateKey: "showSceneTree" | "showProperties" | "showAssetLibrary";
 }[] = [
   { panel: "sceneTree", icon: Layers, label: "Objects", stateKey: "showSceneTree" },
   { panel: "properties", icon: SlidersHorizontal, label: "Settings", stateKey: "showProperties" },
   { panel: "assetLibrary", icon: Shapes, label: "Add Stuff", stateKey: "showAssetLibrary" },
-  { panel: "timeline", icon: Clock, label: "Animation", stateKey: "showTimeline" },
 ];
 
 export function FloatingToolbar() {
@@ -25,13 +23,11 @@ export function FloatingToolbar() {
   const showSceneTree = useUIStore((s) => s.showSceneTree);
   const showProperties = useUIStore((s) => s.showProperties);
   const showAssetLibrary = useUIStore((s) => s.showAssetLibrary);
-  const showTimeline = useUIStore((s) => s.showTimeline);
 
   const panelState: Record<string, boolean> = {
     showSceneTree,
     showProperties,
     showAssetLibrary,
-    showTimeline,
   };
 
   return (

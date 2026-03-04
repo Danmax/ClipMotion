@@ -5,7 +5,7 @@ import { Plus, Trash2, Diamond } from "lucide-react";
 import { useEditorStore } from "@/store/editor-store";
 import { usePlaybackStore } from "@/store/playback-store";
 import { useSelectionStore } from "@/store/selection-store";
-import { useUIStore } from "@/store/ui-store";
+// import { useUIStore } from "@/store/ui-store"; // Deprecated: timeline replaced by storyboard
 import { msToFrame, frameToMs, formatTimecode } from "@/engine/time-utils";
 import { ANIMATABLE_PROPERTIES } from "@/engine/types";
 import type { AnimatableProperty } from "@/engine/types";
@@ -28,7 +28,7 @@ export function TimelinePanel() {
   const setCurrentTime = usePlaybackStore((s) => s.setCurrentTime);
   const selectedNodeIds = useSelectionStore((s) => s.selectedNodeIds);
   const selectNode = useSelectionStore((s) => s.selectNode);
-  const timelineZoom = useUIStore((s) => s.timelineZoom);
+  const timelineZoom = 100; // Deprecated: timeline replaced by storyboard
 
   const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null);
   const rulerRef = useRef<HTMLDivElement>(null);

@@ -7,7 +7,7 @@ import { usePlaybackStore } from "@/store/playback-store";
 import { useSelectionStore } from "@/store/selection-store";
 import { useUIStore } from "@/store/ui-store";
 import { sampleScene } from "@/engine/keyframe-engine";
-import { hexToNumber, drawShapeBody, drawFace } from "@/lib/draw-character";
+import { hexToNumber, drawShapeBody, drawFace, drawLimbs } from "@/lib/draw-character";
 import type { SceneNode } from "@/engine/types";
 
 export function CanvasViewport() {
@@ -160,7 +160,7 @@ export function CanvasViewport() {
       nodeContainer.label = nodeId;
 
       const isSelected = selectedNodeIds.has(nodeId);
-      const { w, h } = drawNodeBody(nodeContainer, node, isSelected);
+      const { w, h } = drawNodeBody(nodeContainer, node, isSelected, currentTimeMs);
 
       // Selection outline for visible nodes
       if (isSelected && node.type !== "container") {
@@ -241,10 +241,11 @@ export function CanvasViewport() {
 function drawNodeBody(
   nodeContainer: Container,
   node: SceneNode,
-  isSelected: boolean
+  isSelected: boolean,
+  timeMs: number
 ): { w: number; h: number } {
   if (node.type === "shape" && node.shape) {
-    return drawShape(nodeContainer, node, isSelected);
+    return drawShape(nodeContainer, node, isSelected, timeMs);
   }
 
   if (node.type === "text" && node.text) {
@@ -269,15 +270,22 @@ function drawNodeBody(
 function drawShape(
   nodeContainer: Container,
   node: SceneNode,
-  isSelected: boolean
+  isSelected: boolean,
+  timeMs: number
 ): { w: number; h: number } {
   const shape = node.shape!;
+
+  // Draw limbs behind the body
+  if (node.limbs) {
+    drawLimbs(nodeContainer, node.limbs, shape.width, shape.height);
+  }
+
   const body = new Graphics();
   const { w, h } = drawShapeBody(body, shape);
   nodeContainer.addChild(body);
 
   if (node.face) {
-    drawFace(nodeContainer, node.face, w, h);
+    drawFace(nodeContainer, node.face, w, h, timeMs);
   }
 
   if (node.showLabel) {

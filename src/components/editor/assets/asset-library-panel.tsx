@@ -14,7 +14,8 @@ import {
 } from "lucide-react";
 import { useEditorStore } from "@/store/editor-store";
 import { useSelectionStore } from "@/store/selection-store";
-import type { ShapeProps, TextProps, FaceProps } from "@/engine/types";
+import type { ShapeProps, TextProps, FaceProps, LimbProps } from "@/engine/types";
+import { DEFAULT_LIMBS } from "@/engine/types";
 import { applyPreset } from "@/engine/face-presets";
 import Link from "next/link";
 
@@ -25,6 +26,7 @@ interface BuiltinAsset {
   category: "shape" | "text";
   shape?: ShapeProps;
   text?: TextProps;
+  limbs?: LimbProps;
   face?: FaceProps;
 }
 
@@ -119,47 +121,117 @@ const BUILTIN_SHAPES: BuiltinAsset[] = [
   },
 ];
 
-// BFDI-style characters (Battle for Dream Island)
+const OBJ_LIMBS: LimbProps = { ...DEFAULT_LIMBS };
+
+// Object Show characters — everyday objects with faces and limbs
 const BFDI_CHARACTERS: BuiltinAsset[] = [
   {
-    id: "bfdi-tennis-ball",
+    id: "obj-tennis-ball",
     name: "Tennis Ball",
     icon: Circle,
     category: "shape",
     shape: { shapeType: "ellipse", width: 120, height: 120, fill: "#ccff00" },
     face: applyPreset("neutral"),
+    limbs: OBJ_LIMBS,
   },
   {
-    id: "bfdi-leafy",
+    id: "obj-leafy",
     name: "Leafy",
     icon: Circle,
     category: "shape",
     shape: { shapeType: "ellipse", width: 100, height: 140, fill: "#00cc33" },
     face: applyPreset("happy"),
+    limbs: OBJ_LIMBS,
   },
   {
-    id: "bfdi-woody",
+    id: "obj-woody",
     name: "Woody",
     icon: Square,
     category: "shape",
     shape: { shapeType: "rectangle", width: 80, height: 120, fill: "#8b4513", cornerRadius: 8 },
     face: applyPreset("scared"),
+    limbs: OBJ_LIMBS,
   },
   {
-    id: "bfdi-bubble",
+    id: "obj-bubble",
     name: "Bubble",
     icon: Circle,
     category: "shape",
     shape: { shapeType: "ellipse", width: 130, height: 130, fill: "#ff69b4" },
     face: applyPreset("happy"),
+    limbs: OBJ_LIMBS,
   },
   {
-    id: "bfdi-pencil",
+    id: "obj-pencil",
     name: "Pencil",
     icon: Square,
     category: "shape",
     shape: { shapeType: "rectangle", width: 40, height: 150, fill: "#ffff00" },
     face: applyPreset("smug"),
+    limbs: OBJ_LIMBS,
+  },
+  {
+    id: "obj-ice-cube",
+    name: "Ice Cube",
+    icon: Square,
+    category: "shape",
+    shape: { shapeType: "rectangle", width: 100, height: 100, fill: "#87ceeb", cornerRadius: 4 },
+    face: applyPreset("worried"),
+    limbs: OBJ_LIMBS,
+  },
+  {
+    id: "obj-firey",
+    name: "Firey",
+    icon: Star,
+    category: "shape",
+    shape: { shapeType: "star", width: 130, height: 130, fill: "#ff4400", points: 8 },
+    face: applyPreset("happy"),
+    limbs: OBJ_LIMBS,
+  },
+  {
+    id: "obj-basketball",
+    name: "Basketball",
+    icon: Circle,
+    category: "shape",
+    shape: { shapeType: "ellipse", width: 120, height: 120, fill: "#ff8844" },
+    face: applyPreset("angry"),
+    limbs: OBJ_LIMBS,
+  },
+  {
+    id: "obj-book",
+    name: "Book",
+    icon: Square,
+    category: "shape",
+    shape: { shapeType: "rectangle", width: 90, height: 120, fill: "#cc4444", cornerRadius: 4 },
+    face: applyPreset("smug"),
+    limbs: OBJ_LIMBS,
+  },
+  {
+    id: "obj-lemon",
+    name: "Lemon",
+    icon: Circle,
+    category: "shape",
+    shape: { shapeType: "ellipse", width: 110, height: 100, fill: "#ffee44" },
+    face: applyPreset("neutral"),
+    limbs: OBJ_LIMBS,
+  },
+  {
+    id: "obj-diamond",
+    name: "Diamond",
+    icon: Hexagon,
+    category: "shape",
+    shape: { shapeType: "polygon", width: 110, height: 110, fill: "#ff2244", points: 4 },
+    face: applyPreset("angry"),
+    limbs: OBJ_LIMBS,
+  },
+  {
+    id: "obj-pizza",
+    name: "Pizza",
+    icon: Triangle,
+    category: "shape",
+    shape: { shapeType: "triangle", width: 120, height: 120, fill: "#ffaa33" },
+    face: applyPreset("happy"),
+    limbs: OBJ_LIMBS,
   },
 ];
 
@@ -256,11 +328,13 @@ interface UserCharacter {
   name: string;
   shapeData: string;
   faceData: string;
+  limbsData?: string;
 }
 
 export function AssetLibraryPanel() {
   const addShapeNode = useEditorStore((s) => s.addShapeNode);
   const addShapeNodeWithFace = useEditorStore((s) => s.addShapeNodeWithFace);
+  const addCharacterNode = useEditorStore((s) => s.addCharacterNode);
   const addTextNode = useEditorStore((s) => s.addTextNode);
   const addContainerNode = useEditorStore((s) => s.addContainerNode);
   const updateNodeProps = useEditorStore((s) => s.updateNodeProps);
@@ -285,7 +359,9 @@ export function AssetLibraryPanel() {
     let nodeId: string;
 
     if (asset.category === "shape" && asset.shape) {
-      if (asset.face) {
+      if (asset.face && asset.limbs) {
+        nodeId = addCharacterNode(asset.name, asset.shape, asset.face, asset.limbs, pos);
+      } else if (asset.face) {
         nodeId = addShapeNodeWithFace(asset.name, asset.shape, asset.face, pos);
       } else {
         nodeId = addShapeNode(asset.name, asset.shape, pos);
@@ -308,9 +384,13 @@ export function AssetLibraryPanel() {
     try {
       const shape = JSON.parse(char.shapeData) as ShapeProps;
       const face = JSON.parse(char.faceData) as FaceProps;
+      const limbs = char.limbsData ? JSON.parse(char.limbsData) as LimbProps : undefined;
       const offsetX = (Math.random() - 0.5) * 60;
       const offsetY = (Math.random() - 0.5) * 60;
-      const nodeId = addShapeNodeWithFace(char.name, shape, face, { x: offsetX, y: offsetY });
+      const pos = { x: offsetX, y: offsetY };
+      const nodeId = limbs
+        ? addCharacterNode(char.name, shape, face, limbs, pos)
+        : addShapeNodeWithFace(char.name, shape, face, pos);
       selectNode(nodeId);
     } catch {
       // ignore parse errors
