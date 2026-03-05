@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "mysql"
+  url      = env("DATABASE_URL")
 }
 
 // ─── Auth ────────────────────────────────────────────────────
@@ -35,12 +35,12 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String?
-  access_token      String?
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String?
+  id_token          String? @db.Text
   session_state     String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -83,7 +83,7 @@ model Project {
   thumbnail   String?
   status      String   @default("DRAFT")
   version     Int      @default(1)
-  timelineData String?
+  timelineData String?  @db.LongText
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -100,7 +100,7 @@ model Scene {
   projectId  String
   name       String   @default("Scene 1")
   order      Int      @default(0)
-  data       String   @default("{}")
+  data       String   @db.LongText
   durationMs Int      @default(3000)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -123,7 +123,7 @@ model Asset {
   fileSize  Int
   width     Int?
   height    Int?
-  metadata  String?
+  metadata  String? @db.Text
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -138,9 +138,9 @@ model Character {
   id        String   @id @default(cuid())
   userId    String
   name      String
-  shapeData String   // JSON: ShapeProps
-  faceData  String   // JSON: FaceProps
-  limbsData String?  // JSON: LimbProps (optional)
+  shapeData String   @db.Text // JSON: ShapeProps
+  faceData  String   @db.Text // JSON: FaceProps
+  limbsData String?  @db.Text // JSON: LimbProps (optional)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -160,7 +160,7 @@ model ExportJob {
   status      String    @default("PENDING")
   progress    Float     @default(0)
   s3Key       String?
-  error       String?
+  error       String?   @db.Text
   watermark   Boolean   @default(true)
   startedAt   DateTime?
   completedAt DateTime?

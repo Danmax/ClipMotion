@@ -54,11 +54,9 @@ Open `http://localhost:3000`.
 
 ## Database / Infra Notes
 
-- Current default Prisma datasource is SQLite (`file:./dev.db`).
-- `docker-compose.yml` includes optional local PostgreSQL, Redis, and MinIO.
-- If switching to PostgreSQL, update both:
-  - `prisma/schema.prisma` datasource
-  - `.env.local` `DATABASE_URL`
+- Current default Prisma datasource is MySQL.
+- Set `DATABASE_URL` to your MySQL instance (example in `.env.example`).
+- `docker-compose.yml` includes optional local PostgreSQL, Redis, and MinIO; if you use it, update Prisma datasource/provider accordingly.
 
 ## Scripts
 
