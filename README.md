@@ -1,23 +1,25 @@
 # ClipMotion
 
-ClipMotion is a web animation editor built with Next.js, PixiJS, Prisma, and Auth.js.
+ClipMotion is a web animation editor for creating short animated scenes with characters, keyframes, and timeline playback.
 
-## Features
+## Core Features
 
-- Email/password and Google authentication
-- Dashboard for projects and characters
-- Character builder (shape + face data)
-- Scene editor with timeline, scene tree, and properties panel
-- REST API routes for projects and characters
+- Auth with email/password and Google
+- Project dashboard + multi-scene editor
+- Character builder (shape, face, limbs)
+- Timeline keyframes for transform + parallax depth
+- Expression keyframes for face changes over time
+- Scene Creator presets (background/middleground/foreground)
+- Manual save + autosave with version conflict recovery
+- Export button downloads project package (`.clipmotion.json`)
 
-## Tech Stack
+## Stack
 
-- Next.js 16 (App Router, Turbopack)
+- Next.js 16 (App Router + Turbopack)
 - React 19 + TypeScript
-- Prisma ORM
-- Auth.js (NextAuth v5 beta) + Prisma Adapter
-- Zustand state management
-- PixiJS rendering
+- Prisma + Auth.js (NextAuth v5 beta)
+- Zustand
+- PixiJS
 - Tailwind CSS 4
 
 ## Requirements
@@ -25,68 +27,64 @@ ClipMotion is a web animation editor built with Next.js, PixiJS, Prisma, and Aut
 - Node.js 20+
 - npm 10+
 
-Optional local services:
-
-- Redis
-- S3-compatible storage (MinIO)
-- PostgreSQL (if you switch datasource from SQLite)
-
 ## Quick Start
 
-1. Install dependencies:
-
+1. Install dependencies
 ```bash
 npm install
 ```
 
-2. Create environment file:
-
+2. Create env file
 ```bash
 cp .env.example .env.local
 ```
 
-3. Generate Prisma client and apply migrations:
-
+3. Generate Prisma client + run migrations
 ```bash
 npm run prisma:generate
 npx prisma migrate deploy
 ```
 
-4. Start development server:
-
+4. Start dev server
 ```bash
 npm run dev
 ```
 
 Open `http://localhost:3000`.
 
-## Environment Notes
+## Database / Infra Notes
 
-- The current Prisma schema uses SQLite (`file:./dev.db`).
-- `docker-compose.yml` provides PostgreSQL, Redis, and MinIO for local infrastructure needs.
-- If you move to PostgreSQL, update `prisma/schema.prisma` datasource and `.env.local` `DATABASE_URL`.
+- Current default Prisma datasource is SQLite (`file:./dev.db`).
+- `docker-compose.yml` includes optional local PostgreSQL, Redis, and MinIO.
+- If switching to PostgreSQL, update both:
+  - `prisma/schema.prisma` datasource
+  - `.env.local` `DATABASE_URL`
 
 ## Scripts
 
-- `npm run dev` - Generate Prisma client and start Next.js dev server
-- `npm run build` - Generate Prisma client and build app
-- `npm run start` - Start production server
-- `npm run lint` - Run ESLint
-- `npm run test` - Run Vitest once
-- `npm run test:watch` - Run Vitest in watch mode
-- `npm run prisma:generate` - Regenerate Prisma client
+- `npm run dev` - Prisma generate + Next dev
+- `npm run build` - Prisma generate + production build
+- `npm run start` - start production server
+- `npm run lint` - ESLint
+- `npm run test` - Vitest (run once)
+- `npm run test:watch` - Vitest watch
+- `npm run prisma:generate` - regenerate Prisma client
 
 ## Project Structure
 
-- `src/app` - App Router pages and API routes
-- `src/components` - UI and editor components
-- `src/engine` - Scene graph and animation logic
-- `src/store` - Zustand editor store
-- `src/lib` - Shared utilities (Prisma, S3, etc.)
-- `prisma` - Prisma schema and migrations
+- `src/app` - routes + API handlers
+- `src/components` - editor UI and dashboard UI
+- `src/engine` - scene graph, keyframes, composition, easing
+- `src/store` - Zustand editor/playback/selection state
+- `src/hooks` - autosave, playback, keyboard shortcuts
+- `src/lib` - shared utilities (db, drawing, constants)
+- `prisma` - schema + migrations
+- `tests` - unit tests (engine-focused)
 
-## Deployment
+## Known Warnings / Troubleshooting
 
-- Ensure Prisma client is generated during install/build (already configured via `postinstall` and scripts).
-- Do not import Prisma from Edge middleware/runtime code paths.
-- Configure production environment variables for Auth, DB, Redis, and S3.
+- Next.js 16 may warn that `middleware` convention is deprecated in favor of `proxy`. This is currently a warning and does not block build.
+- If push fails with `Permission denied (publickey)`, configure SSH key for GitHub and test with:
+```bash
+ssh -T git@github.com
+```
