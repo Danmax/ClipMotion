@@ -40,14 +40,24 @@ export interface SceneNode {
   assetId?: string;
   pivot: { x: number; y: number };
   boneId?: string;
+  /** Optional parallax strength (-2..2). 0 = static, positive = drifts with depth. */
+  parallaxFactor?: number;
   /** Shape-specific properties */
   shape?: ShapeProps;
   /** Text-specific properties */
   text?: TextProps;
   /** Face overlay (eyes + mouth) */
   face?: FaceProps;
+  /** Expression/face keyframes sampled over time */
+  faceKeyframes?: FaceKeyframe[];
   /** Limbs (arms + legs) */
   limbs?: LimbProps;
+}
+
+export interface FaceKeyframe {
+  id: string;
+  timeMs: number;
+  face: FaceProps;
 }
 
 export type NodeType = "container" | "sprite" | "shape" | "text" | "bone";
@@ -199,9 +209,20 @@ export type AnimatableProperty =
   | "rotation"
   | "scaleX"
   | "scaleY"
-  | "opacity";
+  | "opacity"
+  | "parallaxFactor";
 
 export const ANIMATABLE_PROPERTIES: AnimatableProperty[] = [
+  "x",
+  "y",
+  "rotation",
+  "scaleX",
+  "scaleY",
+  "opacity",
+  "parallaxFactor",
+];
+
+export const TRANSFORM_ANIMATABLE_PROPERTIES: Exclude<AnimatableProperty, "parallaxFactor">[] = [
   "x",
   "y",
   "rotation",

@@ -35,6 +35,11 @@ function isSameEasing(a: EasingDefinition, b: EasingDefinition): boolean {
   return a.controlPoints.every((v, i) => Math.abs(v - b.controlPoints![i]) < 0.0001);
 }
 
+function getNodeAnimatableValue(node: SceneNode, property: AnimatableProperty): number {
+  if (property === "parallaxFactor") return node.parallaxFactor ?? 0;
+  return node.transform[property];
+}
+
 export function TimelinePanel() {
   const document = useEditorStore((s) => s.document);
   const fps = useEditorStore((s) => s.fps);
@@ -50,6 +55,7 @@ export function TimelinePanel() {
   const setCurrentTime = usePlaybackStore((s) => s.setCurrentTime);
   const selectedNodeIds = useSelectionStore((s) => s.selectedNodeIds);
   const selectNode = useSelectionStore((s) => s.selectNode);
+  const setSelectedKeyframe = useSelectionStore((s) => s.setSelectedKeyframe);
   const timelineZoom = 100; // Deprecated: timeline replaced by storyboard
 
   const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null);
@@ -86,7 +92,7 @@ export function TimelinePanel() {
       const node = document.nodes[nodeId];
       if (!node) return;
       for (const prop of ANIMATABLE_PROPERTIES) {
-        setKeyframeAt(nodeId, prop, currentTimeMs, node.transform[prop]);
+        setKeyframeAt(nodeId, prop, currentTimeMs, getNodeAnimatableValue(node, prop));
       }
     },
     [document, currentTimeMs, setKeyframeAt]
@@ -104,7 +110,7 @@ export function TimelinePanel() {
       const frame = msToFrame(timeMs, fps);
       const snappedMs = frameToMs(frame, fps);
       for (const prop of ANIMATABLE_PROPERTIES) {
-        setKeyframeAt(nodeId, prop, snappedMs, node.transform[prop]);
+        setKeyframeAt(nodeId, prop, snappedMs, getNodeAnimatableValue(node, prop));
       }
     },
     [document, durationMs, timelineZoom, fps, setKeyframeAt]
@@ -207,51 +213,51 @@ export function TimelinePanel() {
 
   return (
     <div
-      className="h-full flex flex-col bg-gray-900 border-t border-gray-800"
+      className="h-full flex flex-col bg-[#f8fafc] border-t border-[#e2e8f0]"
       onClick={handleCloseContextMenu}
     >
       {/* Timeline header */}
-      <div className="flex items-center px-3 py-1.5 border-b border-gray-800 gap-2">
-        <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">
+      <div className="flex items-center px-3 py-1.5 border-b border-[#e2e8f0] gap-2">
+        <span className="text-xs font-medium text-gray-600 uppercase tracking-wider">
           Animation
         </span>
-        <span className="text-xs text-gray-600">
+        <span className="text-xs text-gray-500">
           Frame {msToFrame(currentTimeMs, fps)} / {msToFrame(durationMs, fps)}
         </span>
         <button
           onClick={() => stepFrame(-1)}
-          className="p-1 rounded text-gray-500 hover:text-white hover:bg-gray-800 transition-colors"
+          className="p-1 rounded text-gray-500 hover:text-gray-900 hover:bg-white transition-colors"
           title="Previous frame"
         >
           <ChevronLeft className="w-3.5 h-3.5" />
         </button>
         <button
           onClick={() => stepFrame(1)}
-          className="p-1 rounded text-gray-500 hover:text-white hover:bg-gray-800 transition-colors"
+          className="p-1 rounded text-gray-500 hover:text-gray-900 hover:bg-white transition-colors"
           title="Next frame"
         >
           <ChevronRight className="w-3.5 h-3.5" />
         </button>
         <button
           onClick={togglePlay}
-          className="p-1 rounded text-gray-500 hover:text-white hover:bg-gray-800 transition-colors"
+          className="p-1 rounded text-gray-500 hover:text-gray-900 hover:bg-white transition-colors"
           title={isPlaying ? "Pause (Space)" : "Play (Space)"}
         >
           {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
         </button>
         <button
           onClick={stop}
-          className="p-1 rounded text-gray-500 hover:text-white hover:bg-gray-800 transition-colors"
+          className="p-1 rounded text-gray-500 hover:text-gray-900 hover:bg-white transition-colors"
           title="Stop"
         >
           <Square className="w-3.5 h-3.5" />
         </button>
         <div className="flex-1" />
-        <label className="text-[10px] text-gray-600">Fill step</label>
+        <label className="text-[10px] text-gray-500">Fill step</label>
         <select
           value={fillStepFrames}
           onChange={(e) => setFillStepFrames(parseInt(e.target.value, 10))}
-          className="bg-gray-800 border border-gray-700 rounded px-1.5 py-0.5 text-[10px] text-gray-300"
+          className="bg-white border border-[#d8e0e8] rounded px-1.5 py-0.5 text-[10px] text-gray-700"
         >
           <option value={1}>1f</option>
           <option value={2}>2f</option>
@@ -259,23 +265,23 @@ export function TimelinePanel() {
         </select>
         <button
           onClick={handleFillInbetweens}
-          className="flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-gray-800 text-blue-300 hover:bg-gray-700 transition-colors"
+          className="flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-cyan-50 text-cyan-700 hover:bg-cyan-100 transition-colors"
           title="Fill in-between keys for selected node(s) using existing easing"
         >
           <WandSparkles className="w-3 h-3" />
           Fill In-Betweens
         </button>
-        <span className="text-[10px] text-gray-600">
-          Double-click track to key all transforms
+        <span className="text-[10px] text-gray-500">
+          Double-click track to key all animated properties
         </span>
       </div>
 
       {/* Timeline body */}
       <div className="flex-1 flex overflow-hidden">
         {/* Track names (left) */}
-        <div className="w-44 shrink-0 border-r border-gray-800">
+        <div className="w-44 shrink-0 border-r border-[#e2e8f0]">
           {/* Ruler spacer */}
-          <div className="h-6 border-b border-gray-800" />
+          <div className="h-6 border-b border-[#e2e8f0]" />
 
           {/* Track labels */}
           {trackNodes.map((node) => {
@@ -283,15 +289,18 @@ export function TimelinePanel() {
             return (
               <div
                 key={node.id}
-                className={`h-7 flex items-center gap-1 px-2 text-xs cursor-pointer border-b border-gray-800/50 group ${
+                className={`h-7 flex items-center gap-1 px-2 text-xs cursor-pointer border-b border-[#e7edf3] group ${
                   isSelected
                     ? "text-blue-300 bg-blue-600/10"
-                    : "text-gray-400 hover:bg-gray-800"
+                    : "text-gray-600 hover:bg-white"
                 }`}
               >
                 <span
                   className="flex-1 truncate"
-                  onClick={() => selectNode(node.id)}
+                  onClick={() => {
+                    selectNode(node.id);
+                    setSelectedKeyframe(null);
+                  }}
                 >
                   {node.name}
                 </span>
@@ -317,7 +326,7 @@ export function TimelinePanel() {
             {/* Ruler */}
             <div
               ref={rulerRef}
-              className="h-6 relative border-b border-gray-800 cursor-pointer"
+              className="h-6 relative border-b border-[#e2e8f0] cursor-pointer"
               onMouseDown={(e) => {
                 const rect = e.currentTarget.getBoundingClientRect();
                 scrubByClientX(e.clientX, rect);
@@ -335,7 +344,7 @@ export function TimelinePanel() {
                   style={{ left: mark.x }}
                 >
                   <div
-                    className={`${mark.major ? "h-6 border-gray-600" : "h-3 border-gray-700"} border-l`}
+                    className={`${mark.major ? "h-6 border-[#b8c2cf]" : "h-3 border-[#d6deea]"} border-l`}
                   />
                   {mark.major && (
                     <span className="absolute top-0 left-1 text-[9px] text-gray-500 whitespace-nowrap">
@@ -364,15 +373,21 @@ export function TimelinePanel() {
               return (
                 <div
                   key={node.id}
-                  className={`h-7 relative border-b border-gray-800/50 cursor-crosshair ${
+                  className={`h-7 relative border-b border-[#e7edf3] cursor-crosshair ${
                     selectedNodeIds.has(node.id) ? "bg-blue-900/10" : ""
                   }`}
+                  onClick={(e) => {
+                    if (e.target === e.currentTarget) {
+                      selectNode(node.id);
+                      setSelectedKeyframe(null);
+                    }
+                  }}
                   onDoubleClick={(e) => handleTrackDoubleClick(e, node.id)}
                 >
                   {/* Empty state hint */}
                   {!hasKeyframes && (
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                      <span className="text-[9px] text-gray-700">
+                      <span className="text-[9px] text-gray-500">
                         Double-click to add animation point
                       </span>
                     </div>
@@ -390,6 +405,19 @@ export function TimelinePanel() {
                             className="absolute top-1/2 -translate-y-1/2 -translate-x-1.5 z-[5]"
                             style={{ left: x }}
                             title={`${prop}: ${Math.round(kf.value * 100) / 100} @ ${formatTimecode(kf.timeMs, fps)}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              selectNode(node.id);
+                              setCurrentTime(kf.timeMs);
+                              setSelectedKeyframe({
+                                nodeId: node.id,
+                                property: prop as AnimatableProperty,
+                                keyframeId: kf.id,
+                                timeMs: kf.timeMs,
+                                value: kf.value,
+                                easing: kf.easing,
+                              });
+                            }}
                             onContextMenu={(e) =>
                               handleKeyframeContextMenu(
                                 e,
@@ -421,11 +449,11 @@ export function TimelinePanel() {
       {/* Context menu */}
       {contextMenu && (
         <div
-          className="fixed z-50 bg-gray-800 border border-gray-700 rounded-lg shadow-xl py-1 min-w-[140px]"
+          className="fixed z-50 bg-white border border-[#d6deea] rounded-lg shadow-xl py-1 min-w-[140px]"
           style={{ left: contextMenu.x, top: contextMenu.y }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="px-3 py-1 text-[10px] text-gray-500 border-b border-gray-700">
+          <div className="px-3 py-1 text-[10px] text-gray-500 border-b border-[#d6deea]">
             {contextMenu.property} animation point
           </div>
           <div className="px-3 py-1 text-[10px] text-gray-500">
@@ -438,16 +466,16 @@ export function TimelinePanel() {
               className={`w-full text-left px-3 py-1 text-xs transition-colors ${
                 isSameEasing(contextMenu.easing, option.easing)
                   ? "text-blue-300 bg-blue-500/10"
-                  : "text-gray-300 hover:bg-gray-700"
+                  : "text-gray-700 hover:bg-[#f1f5f9]"
               }`}
             >
               {option.label}
             </button>
           ))}
-          <div className="my-1 border-t border-gray-700" />
+          <div className="my-1 border-t border-[#d6deea]" />
           <button
             onClick={handleDeleteKeyframe}
-            className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-red-400 hover:bg-gray-700 transition-colors"
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-red-500 hover:bg-[#fff1f2] transition-colors"
           >
             <Trash2 className="w-3 h-3" />
             Remove animation point

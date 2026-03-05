@@ -1,28 +1,62 @@
 "use client";
 
-import { KeySquare } from "lucide-react";
+import { KeySquare, Plus } from "lucide-react";
 import { useEditorStore } from "@/store/editor-store";
 import { usePlaybackStore } from "@/store/playback-store";
 import { useSelectionStore } from "@/store/selection-store";
 import type {
   AnimatableProperty,
+  EasingDefinition,
   EyeStyle,
   MouthStyle,
   ExpressionPreset,
   EyebrowStyle,
   MouthEffect,
+  SceneNode,
 } from "@/engine/types";
 import { DEFAULT_FACE } from "@/engine/types";
 import { EXPRESSION_PRESETS, applyPreset } from "@/engine/face-presets";
 import { AnimationSection } from "./animation-section";
+import { ANIMATABLE_PROPERTIES } from "@/engine/types";
+import { EASING_PRESETS } from "@/engine/easing";
+
+const KEYFRAME_EASING_OPTIONS: { id: string; label: string; easing: EasingDefinition }[] = [
+  { id: "linear", label: "Linear", easing: EASING_PRESETS.linear },
+  { id: "easeIn", label: "Ease In", easing: EASING_PRESETS.easeIn },
+  { id: "easeOut", label: "Ease Out", easing: EASING_PRESETS.easeOut },
+  { id: "easeInOut", label: "Ease In Out", easing: EASING_PRESETS.easeInOut },
+  { id: "step", label: "Step", easing: EASING_PRESETS.step },
+];
+
+function isSameEasing(a: EasingDefinition, b: EasingDefinition): boolean {
+  if (a.type !== b.type) return false;
+  if (a.type !== "cubicBezier") return true;
+  if (!a.controlPoints || !b.controlPoints) return false;
+  return a.controlPoints.every((v, i) => Math.abs(v - b.controlPoints![i]) < 0.0001);
+}
+
+function getNodeAnimatableValue(
+  node: SceneNode,
+  property: AnimatableProperty
+): number {
+  if (property === "parallaxFactor") return node.parallaxFactor ?? 0;
+  return node.transform[property];
+}
 
 export function PropertiesPanel() {
   const document = useEditorStore((s) => s.document);
   const updateNodeTransform = useEditorStore((s) => s.updateNodeTransform);
   const updateNodeProps = useEditorStore((s) => s.updateNodeProps);
   const setKeyframeAt = useEditorStore((s) => s.setKeyframeAt);
+  const removeKeyframeById = useEditorStore((s) => s.removeKeyframeById);
+  const moveKeyframeTo = useEditorStore((s) => s.moveKeyframeTo);
+  const updateKeyframeEasingById = useEditorStore((s) => s.updateKeyframeEasingById);
+  const setExpressionKeyframeAt = useEditorStore((s) => s.setExpressionKeyframeAt);
   const currentTimeMs = usePlaybackStore((s) => s.currentTimeMs);
+  const setCurrentTime = usePlaybackStore((s) => s.setCurrentTime);
   const selectedNodeIds = useSelectionStore((s) => s.selectedNodeIds);
+  const selectedKeyframe = useSelectionStore((s) => s.selectedKeyframe);
+  const setSelectedKeyframe = useSelectionStore((s) => s.setSelectedKeyframe);
 
   const selectedId = [...selectedNodeIds][0];
   const node = selectedId ? document.nodes[selectedId] : null;
@@ -41,8 +75,32 @@ export function PropertiesPanel() {
   };
 
   const handleSetKeyframe = (prop: AnimatableProperty) => {
-    setKeyframeAt(selectedId, prop, currentTimeMs, node.transform[prop]);
+    setKeyframeAt(selectedId, prop, currentTimeMs, getNodeAnimatableValue(node, prop));
   };
+
+  const handleSetExpressionKeyframe = () => {
+    if (!face) return;
+    setExpressionKeyframeAt(selectedId, currentTimeMs, face);
+  };
+
+  const handleSetAllTransformKeyframes = () => {
+    for (const prop of ANIMATABLE_PROPERTIES) {
+      setKeyframeAt(selectedId, prop, currentTimeMs, getNodeAnimatableValue(node, prop));
+    }
+  };
+
+  const keyframeTrack = selectedKeyframe && selectedKeyframe.nodeId === selectedId
+    ? document.animations[selectedId]?.tracks[selectedKeyframe.property]
+    : undefined;
+  const activeKeyframe =
+    selectedKeyframe && keyframeTrack
+      ? keyframeTrack.keyframes.find((kf) => kf.id === selectedKeyframe.keyframeId)
+      : undefined;
+
+  const activeKeyframeEasingId =
+    activeKeyframe
+      ? KEYFRAME_EASING_OPTIONS.find((opt) => isSameEasing(opt.easing, activeKeyframe.easing))?.id ?? "linear"
+      : "linear";
 
   return (
     <div className="h-full overflow-y-auto" onClick={(e) => e.stopPropagation()}>
@@ -87,7 +145,17 @@ export function PropertiesPanel() {
             {face && (
               <div className="space-y-2">
                 <div>
-                  <span className="text-[10px] text-gray-600 mb-1 block">Expression</span>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] text-gray-600 block">Expression</span>
+                    <button
+                      onClick={handleSetExpressionKeyframe}
+                      className="text-[10px] text-yellow-400 hover:text-yellow-300 flex items-center gap-0.5"
+                      title="Add expression keyframe at playhead"
+                    >
+                      <KeySquare className="w-3 h-3" />
+                      Key Expr
+                    </button>
+                  </div>
                   <div className="grid grid-cols-3 gap-1">
                     {(Object.keys(EXPRESSION_PRESETS) as ExpressionPreset[]).map((preset) => (
                       <button
@@ -102,6 +170,9 @@ export function PropertiesPanel() {
                         {preset}
                       </button>
                     ))}
+                  </div>
+                  <div className="mt-1 text-[10px] text-gray-600">
+                    {node.faceKeyframes?.length ?? 0} expression keys
                   </div>
                 </div>
 
@@ -441,7 +512,17 @@ export function PropertiesPanel() {
 
         {/* Transform fields */}
         <div>
-          <label className="block text-xs text-gray-500 mb-2">Position & Transform</label>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-xs text-gray-500">Position & Transform</label>
+            <button
+              onClick={handleSetAllTransformKeyframes}
+              className="text-[10px] text-yellow-400 hover:text-yellow-300 flex items-center gap-0.5"
+              title="Add keyframes for all transform properties at playhead"
+            >
+              <Plus className="w-3 h-3" />
+              Key All
+            </button>
+          </div>
           <div className="space-y-2">
             <TransformRow
               label="X"
@@ -489,6 +570,113 @@ export function PropertiesPanel() {
           </div>
         </div>
 
+        {/* Selected keyframe editing */}
+        <div>
+          <label className="block text-xs text-gray-500 mb-2">Keyframe Properties</label>
+          {activeKeyframe && selectedKeyframe ? (
+            <div className="space-y-2 rounded border border-gray-700 bg-gray-800/70 p-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-gray-300">Property</span>
+                <span className="text-[11px] text-yellow-300">{selectedKeyframe.property}</span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500 w-20">Time (ms)</span>
+                <input
+                  type="number"
+                  value={Math.round(activeKeyframe.timeMs)}
+                  min={0}
+                  step={1}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value, 10);
+                    if (Number.isNaN(v)) return;
+                    const nextTimeMs = Math.max(0, v);
+                    moveKeyframeTo(selectedId, selectedKeyframe.property, selectedKeyframe.keyframeId, nextTimeMs);
+                    setCurrentTime(nextTimeMs);
+                    setSelectedKeyframe({
+                      ...selectedKeyframe,
+                      timeMs: nextTimeMs,
+                    });
+                  }}
+                  className="flex-1 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500 w-20">Value</span>
+                <input
+                  type="number"
+                  value={Math.round(activeKeyframe.value * 1000) / 1000}
+                  step={selectedKeyframe.property === "opacity" ? 0.01 : 0.1}
+                  min={selectedKeyframe.property === "opacity" ? 0 : undefined}
+                  max={selectedKeyframe.property === "opacity" ? 1 : undefined}
+                  onChange={(e) => {
+                    const v = parseFloat(e.target.value);
+                    if (Number.isNaN(v)) return;
+                    const nextValue = selectedKeyframe.property === "opacity"
+                      ? Math.max(0, Math.min(1, v))
+                      : v;
+                    setKeyframeAt(
+                      selectedId,
+                      selectedKeyframe.property,
+                      activeKeyframe.timeMs,
+                      nextValue,
+                      activeKeyframe.easing
+                    );
+                    setSelectedKeyframe({
+                      ...selectedKeyframe,
+                      value: nextValue,
+                    });
+                  }}
+                  className="flex-1 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500 w-20">Easing</span>
+                <select
+                  value={activeKeyframeEasingId}
+                  onChange={(e) => {
+                    const next = KEYFRAME_EASING_OPTIONS.find((opt) => opt.id === e.target.value);
+                    if (!next) return;
+                    updateKeyframeEasingById(
+                      selectedId,
+                      selectedKeyframe.property,
+                      selectedKeyframe.keyframeId,
+                      next.easing
+                    );
+                    setSelectedKeyframe({
+                      ...selectedKeyframe,
+                      easing: next.easing,
+                    });
+                  }}
+                  className="flex-1 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  {KEYFRAME_EASING_OPTIONS.map((opt) => (
+                    <option key={opt.id} value={opt.id}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                onClick={() => {
+                  removeKeyframeById(selectedId, selectedKeyframe.property, selectedKeyframe.keyframeId);
+                  setSelectedKeyframe(null);
+                }}
+                className="w-full rounded border border-red-500/40 bg-red-500/10 px-2 py-1 text-xs text-red-300 hover:bg-red-500/20 transition-colors"
+              >
+                Remove Keyframe
+              </button>
+            </div>
+          ) : (
+            <div className="rounded border border-dashed border-gray-700 p-2 text-[11px] text-gray-500">
+              Click a keyframe in timeline to edit its properties.
+            </div>
+          )}
+        </div>
+
         {/* Animations */}
         <AnimationSection
           nodeId={selectedId}
@@ -508,6 +696,36 @@ export function PropertiesPanel() {
             <option value="normal">Middle</option>
             <option value="foreground">In Front</option>
           </select>
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <label htmlFor="parallax-factor" className="block text-xs text-gray-500">Parallax</label>
+            <button
+              onClick={() => handleSetKeyframe("parallaxFactor")}
+              className="text-[10px] text-yellow-400 hover:text-yellow-300 flex items-center gap-0.5"
+              title="Add parallax keyframe at playhead"
+            >
+              <KeySquare className="w-3 h-3" />
+              Key
+            </button>
+          </div>
+          <input
+            id="parallax-factor"
+            type="number"
+            value={node.parallaxFactor ?? 0}
+            min={-2}
+            max={2}
+            step={0.05}
+            onChange={(e) => {
+              const v = parseFloat(e.target.value);
+              if (!isNaN(v)) {
+                updateNodeProps(selectedId, { parallaxFactor: Math.max(-2, Math.min(2, v)) });
+              }
+            }}
+            className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          />
+          <p className="mt-1 text-[10px] text-gray-600">0 = static. Foreground usually uses higher values.</p>
         </div>
 
         {/* Label visibility */}

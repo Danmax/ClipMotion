@@ -7,7 +7,12 @@ import type {
   EasingDefinition,
   NodeAnimation,
 } from "./types";
-import { DEFAULT_TRANSFORM, DEFAULT_EASING, ANIMATABLE_PROPERTIES } from "./types";
+import {
+  DEFAULT_TRANSFORM,
+  DEFAULT_EASING,
+  ANIMATABLE_PROPERTIES,
+  TRANSFORM_ANIMATABLE_PROPERTIES,
+} from "./types";
 import { evaluateEasing } from "./easing";
 import { nanoid } from "nanoid";
 
@@ -81,10 +86,10 @@ function binarySearchKeyframes(keyframes: Keyframe[], timeMs: number): number {
 export function sampleNodeAnimation(
   animation: NodeAnimation | undefined,
   timeMs: number
-): Partial<Transform> {
+): Partial<Record<AnimatableProperty, number>> {
   if (!animation) return {};
 
-  const result: Partial<Transform> = {};
+  const result: Partial<Record<AnimatableProperty, number>> = {};
 
   for (const prop of ANIMATABLE_PROPERTIES) {
     const track = animation.tracks[prop];
@@ -114,14 +119,33 @@ export function getEffectiveTransform(
   const animation = doc.animations[nodeId];
   const animated = sampleNodeAnimation(animation, timeMs);
 
-  return {
-    x: animated.x ?? node.transform.x,
-    y: animated.y ?? node.transform.y,
-    rotation: animated.rotation ?? node.transform.rotation,
-    scaleX: animated.scaleX ?? node.transform.scaleX,
-    scaleY: animated.scaleY ?? node.transform.scaleY,
-    opacity: animated.opacity ?? node.transform.opacity,
-  };
+  const result: Transform = { ...node.transform };
+  for (const prop of TRANSFORM_ANIMATABLE_PROPERTIES) {
+    const value = animated[prop];
+    if (value !== undefined) {
+      result[prop] = value;
+    }
+  }
+  return result;
+}
+
+/**
+ * Compute effective parallax factor for a node at a given time.
+ */
+export function getEffectiveParallaxFactor(
+  doc: SceneDocument,
+  nodeId: string,
+  timeMs: number
+): number {
+  const node = doc.nodes[nodeId];
+  if (!node) return 0;
+
+  const animation = doc.animations[nodeId];
+  const track = animation?.tracks.parallaxFactor;
+  const animatedValue = track ? interpolateProperty(track, timeMs) : undefined;
+  const base = node.parallaxFactor ?? 0;
+  const resolved = animatedValue ?? base;
+  return Math.max(-2, Math.min(2, resolved));
 }
 
 /**

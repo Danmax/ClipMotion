@@ -1,12 +1,12 @@
 "use client";
 
-import { useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect, useCallback, useState } from "react";
 import { Application, Container, Graphics, Text, TextStyle, FederatedPointerEvent } from "pixi.js";
 import { useEditorStore } from "@/store/editor-store";
 import { usePlaybackStore } from "@/store/playback-store";
 import { useSelectionStore } from "@/store/selection-store";
 import { useUIStore } from "@/store/ui-store";
-import { sampleScene } from "@/engine/keyframe-engine";
+import { getEffectiveParallaxFactor, sampleScene } from "@/engine/keyframe-engine";
 import { hexToNumber, drawShapeBody, drawFace, drawLimbs } from "@/lib/draw-character";
 import type { SceneNode } from "@/engine/types";
 
@@ -30,21 +30,27 @@ export function CanvasViewport() {
     startNodeX: number;
     startNodeY: number;
   } | null>(null);
+  const [viewportReady, setViewportReady] = useState(false);
 
   const document = useEditorStore((s) => s.document);
   const canvasWidth = useEditorStore((s) => s.canvasWidth);
   const canvasHeight = useEditorStore((s) => s.canvasHeight);
+  const durationMs = useEditorStore((s) => s.durationMs);
   const updateNodeTransform = useEditorStore((s) => s.updateNodeTransform);
   const currentTimeMs = usePlaybackStore((s) => s.currentTimeMs);
   const selectedNodeIds = useSelectionStore((s) => s.selectedNodeIds);
   const selectNode = useSelectionStore((s) => s.selectNode);
   const clearNodeSelection = useSelectionStore((s) => s.clearNodeSelection);
+  const clearSelectionRef = useRef(clearNodeSelection);
   const canvasZoom = useUIStore((s) => s.canvasZoom);
   const setCanvasZoom = useUIStore((s) => s.setCanvasZoom);
 
   useEffect(() => {
     canvasZoomRef.current = canvasZoom;
   }, [canvasZoom]);
+  useEffect(() => {
+    clearSelectionRef.current = clearNodeSelection;
+  }, [clearNodeSelection]);
 
   // Initialize PixiJS
   useEffect(() => {
@@ -56,7 +62,7 @@ export function CanvasViewport() {
     let resizeObserver: ResizeObserver | null = null;
 
     const initPromise = app.init({
-      background: "#111118",
+      background: "#d8dee6",
       resizeTo: containerRef.current,
       antialias: true,
     }).then(() => {
@@ -75,14 +81,15 @@ export function CanvasViewport() {
       sceneContainer.label = "scene";
       app.stage.addChild(sceneContainer);
       sceneContainerRef.current = sceneContainer;
+      setViewportReady(true);
 
       syncSceneViewport(app, sceneContainer, canvasZoomRef.current);
 
       // Background fill for the canvas area (centered on origin)
       const bg = new Graphics();
       bg.rect(-canvasWidth / 2, -canvasHeight / 2, canvasWidth, canvasHeight);
-      bg.fill({ color: 0x1a1a2e });
-      bg.stroke({ width: 1, color: 0x333355 });
+      bg.fill({ color: 0xf8fafc });
+      bg.stroke({ width: 1, color: 0xcfd8e3 });
       sceneContainer.addChild(bg);
 
       // Pointer up on stage to end drag
@@ -91,6 +98,12 @@ export function CanvasViewport() {
       });
       app.stage.on("pointerupoutside", () => {
         dragStateRef.current = null;
+      });
+      app.stage.on("pointerdown", (e: FederatedPointerEvent) => {
+        // Only clear when user clicks empty stage/background, not a node.
+        if (e.target === app.stage) {
+          clearSelectionRef.current();
+        }
       });
 
       // Pointer move on stage for drag
@@ -133,6 +146,7 @@ export function CanvasViewport() {
         app.destroy(true, { children: true });
         appRef.current = null;
         sceneContainerRef.current = null;
+        setViewportReady(false);
       });
     };
   }, [canvasWidth, canvasHeight, updateNodeTransform]);
@@ -149,7 +163,7 @@ export function CanvasViewport() {
   // Render scene nodes
   useEffect(() => {
     const container = sceneContainerRef.current;
-    if (!container) return;
+    if (!container || !viewportReady) return;
 
     const transforms = sampleScene(document, currentTimeMs);
 
@@ -180,7 +194,8 @@ export function CanvasViewport() {
       if (!transform) return;
 
       const nodeContainer = new Container();
-      nodeContainer.x = transform.x;
+      const parallaxFactor = getEffectiveParallaxFactor(document, nodeId, currentTimeMs);
+      nodeContainer.x = transform.x + getParallaxOffset(parallaxFactor, currentTimeMs, durationMs);
       nodeContainer.y = transform.y;
       nodeContainer.rotation = (transform.rotation * Math.PI) / 180;
       nodeContainer.scale.set(transform.scaleX, transform.scaleY);
@@ -227,17 +242,7 @@ export function CanvasViewport() {
     for (const childId of sortedRootChildren) {
       renderNode(childId);
     }
-  }, [document, currentTimeMs, selectedNodeIds, selectNode]);
-
-  // Deselect on background click
-  const handleBgClick = useCallback(
-    (e: React.MouseEvent) => {
-      if (e.target === containerRef.current || (e.target as HTMLElement)?.tagName === "CANVAS") {
-        clearNodeSelection();
-      }
-    },
-    [clearNodeSelection]
-  );
+  }, [document, currentTimeMs, durationMs, selectedNodeIds, selectNode, viewportReady]);
 
   // Zoom with mouse wheel
   const handleWheel = useCallback(
@@ -252,14 +257,13 @@ export function CanvasViewport() {
   );
 
   return (
-    <div className="relative w-full h-full bg-gray-950 overflow-hidden">
+    <div className="relative w-full h-full bg-[#dfe5eb] overflow-hidden rounded-2xl border border-[#cfd8e3]">
       <div
         ref={containerRef}
         className="w-full h-full"
-        onClick={handleBgClick}
         onWheel={handleWheel}
       />
-      <div className="absolute bottom-3 right-3 text-xs text-gray-500 bg-gray-900/80 px-2 py-1 rounded">
+      <div className="absolute bottom-3 right-3 text-xs text-gray-600 bg-white/85 px-2 py-1 rounded">
         {Math.round(canvasZoom * 100)}%
       </div>
     </div>
@@ -297,6 +301,15 @@ function drawNodeBody(
   return { w: 0, h: 0 };
 }
 
+function getParallaxOffset(factor: number, timeMs: number, durationMs: number): number {
+  if (Math.abs(factor) < 0.001) return 0;
+
+  const cycleMs = Math.max(3000, durationMs || 6000);
+  const angle = (timeMs / cycleMs) * Math.PI * 2;
+  const amplitude = 48;
+  return Math.sin(angle) * amplitude * factor;
+}
+
 function drawShape(
   nodeContainer: Container,
   node: SceneNode,
@@ -314,8 +327,9 @@ function drawShape(
   const { w, h } = drawShapeBody(body, shape);
   nodeContainer.addChild(body);
 
-  if (node.face) {
-    drawFace(nodeContainer, node.face, w, h, timeMs);
+  const sampledFace = sampleFaceAtTime(node, timeMs);
+  if (sampledFace) {
+    drawFace(nodeContainer, sampledFace, w, h, timeMs);
   }
 
   if (node.showLabel) {
@@ -333,6 +347,22 @@ function drawShape(
   }
 
   return { w, h };
+}
+
+function sampleFaceAtTime(node: SceneNode, timeMs: number) {
+  if (!node.face) return undefined;
+  const keyframes = node.faceKeyframes;
+  if (!keyframes || keyframes.length === 0) return node.face;
+
+  let activeFace = node.face;
+  let bestTime = -1;
+  for (const kf of keyframes) {
+    if (kf.timeMs <= timeMs && kf.timeMs >= bestTime) {
+      activeFace = kf.face;
+      bestTime = kf.timeMs;
+    }
+  }
+  return activeFace;
 }
 
 function drawTextNode(
