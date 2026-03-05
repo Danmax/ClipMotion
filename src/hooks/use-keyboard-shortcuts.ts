@@ -12,7 +12,7 @@ import type { ToolId } from "@/store/ui-store";
  * Global keyboard shortcut handler for the editor.
  * Attaches to window keydown events.
  */
-export function useKeyboardShortcuts(onSave?: () => void) {
+export function useKeyboardShortcuts(onSave?: () => void | Promise<boolean>) {
   const undo = useHistoryStore((s) => s.undo);
   const redo = useHistoryStore((s) => s.redo);
   const togglePlay = usePlaybackStore((s) => s.togglePlay);
@@ -44,7 +44,7 @@ export function useKeyboardShortcuts(onSave?: () => void) {
       // Save: Ctrl+S
       if (mod && e.key === "s") {
         e.preventDefault();
-        onSave?.();
+        void onSave?.();
         return;
       }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useCallback, useState } from "react";
+import { useRef, useEffect, useCallback } from "react";
 import { Application, Container, Graphics, Text, TextStyle, FederatedPointerEvent } from "pixi.js";
 import { useEditorStore } from "@/store/editor-store";
 import { usePlaybackStore } from "@/store/playback-store";
@@ -30,7 +30,6 @@ export function CanvasViewport() {
     startNodeX: number;
     startNodeY: number;
   } | null>(null);
-  const [viewportReady, setViewportReady] = useState(false);
 
   const document = useEditorStore((s) => s.document);
   const canvasWidth = useEditorStore((s) => s.canvasWidth);
@@ -81,7 +80,6 @@ export function CanvasViewport() {
       sceneContainer.label = "scene";
       app.stage.addChild(sceneContainer);
       sceneContainerRef.current = sceneContainer;
-      setViewportReady(true);
 
       syncSceneViewport(app, sceneContainer, canvasZoomRef.current);
 
@@ -146,7 +144,6 @@ export function CanvasViewport() {
         app.destroy(true, { children: true });
         appRef.current = null;
         sceneContainerRef.current = null;
-        setViewportReady(false);
       });
     };
   }, [canvasWidth, canvasHeight, updateNodeTransform]);
@@ -163,7 +160,7 @@ export function CanvasViewport() {
   // Render scene nodes
   useEffect(() => {
     const container = sceneContainerRef.current;
-    if (!container || !viewportReady) return;
+    if (!container) return;
 
     const transforms = sampleScene(document, currentTimeMs);
 
@@ -242,7 +239,7 @@ export function CanvasViewport() {
     for (const childId of sortedRootChildren) {
       renderNode(childId);
     }
-  }, [document, currentTimeMs, durationMs, selectedNodeIds, selectNode, viewportReady]);
+  }, [document, currentTimeMs, durationMs, selectedNodeIds, selectNode]);
 
   // Zoom with mouse wheel
   const handleWheel = useCallback(

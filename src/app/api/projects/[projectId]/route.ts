@@ -66,7 +66,10 @@ export async function PATCH(
   // Optimistic locking
   if (parsed.data.version !== undefined && parsed.data.version !== existing.version) {
     return NextResponse.json(
-      { error: "Version conflict. Please reload." },
+      {
+        error: "Version conflict. Please reload.",
+        currentVersion: existing.version,
+      },
       { status: 409 }
     );
   }

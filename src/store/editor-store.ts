@@ -14,7 +14,7 @@ import type {
   LimbProps,
   TimelineComposition,
 } from "@/engine/types";
-import { EMPTY_TIMELINE_COMPOSITION, ANIMATABLE_PROPERTIES } from "@/engine/types";
+import { EMPTY_TIMELINE_COMPOSITION, ANIMATABLE_PROPERTIES, DEFAULT_FACE } from "@/engine/types";
 import {
   createSceneDocument,
   createNode,
@@ -102,13 +102,14 @@ interface EditorState {
   updateNodeTransform: (nodeId: string, transform: Partial<Transform>) => void;
   addShapeNodeWithFace: (name: string, shape: ShapeProps, face: FaceProps, transform?: Partial<Transform>) => string;
   addCharacterNode: (name: string, shape: ShapeProps, face: FaceProps, limbs: LimbProps, transform?: Partial<Transform>) => string;
-  updateNodeProps: (nodeId: string, updates: Partial<Pick<SceneNode, "name" | "visible" | "locked" | "showLabel" | "layer" | "pivot" | "assetId" | "shape" | "text" | "face" | "limbs">>) => void;
+  updateNodeProps: (nodeId: string, updates: Partial<Pick<SceneNode, "name" | "visible" | "locked" | "showLabel" | "layer" | "pivot" | "assetId" | "parallaxFactor" | "shape" | "text" | "face" | "faceKeyframes" | "limbs">>) => void;
   reparentNodeTo: (nodeId: string, newParentId: string, index?: number) => void;
   reorderChildNode: (parentId: string, fromIndex: number, toIndex: number) => void;
   duplicateNodeById: (nodeId: string) => string | null;
 
   // Keyframe operations
   setKeyframeAt: (nodeId: string, property: AnimatableProperty, timeMs: number, value: number, easing?: EasingDefinition) => void;
+  setExpressionKeyframeAt: (nodeId: string, timeMs: number, face?: FaceProps) => void;
   removeKeyframeById: (nodeId: string, property: AnimatableProperty, keyframeId: string) => void;
   moveKeyframeTo: (nodeId: string, property: AnimatableProperty, keyframeId: string, newTimeMs: number) => void;
   updateKeyframeEasingById: (nodeId: string, property: AnimatableProperty, keyframeId: string, easing: EasingDefinition) => void;
@@ -429,6 +430,37 @@ export const useEditorStore = create<EditorState>()(
     setKeyframeAt: (nodeId, property, timeMs, value, easing) => {
       set((state) => {
         const nextDoc = setKeyframe(state.document, nodeId, property, timeMs, value, easing);
+        applyDocumentToActiveScene(state, nextDoc);
+      });
+    },
+
+    setExpressionKeyframeAt: (nodeId, timeMs, face) => {
+      set((state) => {
+        const node = state.document.nodes[nodeId];
+        if (!node) return;
+
+        const baseFace = face ?? node.face;
+        if (!baseFace) return;
+
+        const resolvedFace: FaceProps = { ...DEFAULT_FACE, ...baseFace };
+        const roundedTime = Math.max(0, Math.round(timeMs));
+        const current = node.faceKeyframes ?? [];
+
+        const existingIndex = current.findIndex((kf) => kf.timeMs === roundedTime);
+        const nextFaceKeyframes = existingIndex >= 0
+          ? current.map((kf, i) =>
+              i === existingIndex
+                ? { ...kf, face: resolvedFace }
+                : kf
+            )
+          : [...current, { id: nanoid(), timeMs: roundedTime, face: resolvedFace }].sort(
+              (a, b) => a.timeMs - b.timeMs
+            );
+
+        const nextDoc = updateNode(state.document, nodeId, {
+          face: resolvedFace,
+          faceKeyframes: nextFaceKeyframes,
+        });
         applyDocumentToActiveScene(state, nextDoc);
       });
     },

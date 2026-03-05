@@ -102,6 +102,24 @@ const facePropsSchema = z.object({
   faceScale: z.number(),
 });
 
+const faceKeyframeSchema = z.object({
+  id: z.string(),
+  timeMs: z.number().min(0),
+  face: facePropsSchema,
+});
+
+const limbPropsSchema = z.object({
+  armStyle: z.enum(["straight", "bent", "none"]),
+  legStyle: z.enum(["straight", "bent", "none"]),
+  limbColor: z.string(),
+  limbThickness: z.number(),
+  armLength: z.number(),
+  legLength: z.number(),
+  armSpread: z.number(),
+  legSpread: z.number(),
+  feet: z.boolean(),
+});
+
 const sceneNodeSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -114,11 +132,14 @@ const sceneNodeSchema = z.object({
   layer: z.enum(["background", "normal", "foreground"]).default("normal"),
   transform: transformSchema,
   assetId: z.string().optional(),
+  parallaxFactor: z.number().optional(),
   pivot: z.object({ x: z.number(), y: z.number() }),
   boneId: z.string().optional(),
   shape: shapePropsSchema.optional(),
   text: textPropsSchema.optional(),
   face: facePropsSchema.optional(),
+  faceKeyframes: z.array(faceKeyframeSchema).optional(),
+  limbs: limbPropsSchema.optional(),
 });
 
 const sceneDocumentSchema = z.object({

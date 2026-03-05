@@ -14,8 +14,11 @@ import {
   type EyebrowStyle,
 } from "@/engine/types";
 
-export function hexToNumber(hex: string): number {
-  return parseInt(hex.replace("#", ""), 16);
+export function hexToNumber(hex: string, fallback = 0x667085): number {
+  if (typeof hex !== "string") return fallback;
+  const normalized = hex.trim().replace("#", "");
+  const value = parseInt(normalized, 16);
+  return Number.isFinite(value) ? value : fallback;
 }
 
 /**
@@ -23,9 +26,9 @@ export function hexToNumber(hex: string): number {
  * Returns { w, h } of the drawn shape.
  */
 export function drawShapeBody(g: Graphics, shape: ShapeProps): { w: number; h: number } {
-  const w = shape.width;
-  const h = shape.height;
-  const fillColor = hexToNumber(shape.fill);
+  const w = Math.max(1, Number(shape.width) || 1);
+  const h = Math.max(1, Number(shape.height) || 1);
+  const fillColor = hexToNumber(shape.fill, 0x58a6ff);
 
   switch (shape.shapeType) {
     case "rectangle": {
@@ -69,9 +72,9 @@ export function drawShapeBody(g: Graphics, shape: ShapeProps): { w: number; h: n
     }
   }
 
-  if (shape.stroke && shape.strokeWidth) {
-    g.stroke({ width: shape.strokeWidth, color: hexToNumber(shape.stroke) });
-  }
+  const strokeColor = shape.stroke ? hexToNumber(shape.stroke, 0x1f2937) : 0x1f2937;
+  const strokeWidth = shape.strokeWidth && shape.strokeWidth > 0 ? shape.strokeWidth : 1;
+  g.stroke({ width: strokeWidth, color: strokeColor, alpha: shape.stroke ? 1 : 0.32 });
 
   return { w, h };
 }

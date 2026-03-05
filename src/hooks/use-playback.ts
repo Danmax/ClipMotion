@@ -55,10 +55,9 @@ export function usePlayback() {
         }
       }
 
-      // Snap to frame boundaries for consistent playback
-      const frameDuration = 1000 / editorState.fps;
-      const snapped = Math.round(nextTime / frameDuration) * frameDuration;
-      playbackState.setCurrentTime(snapped);
+      // Use continuous time accumulation; snapping each RAF tick can stall playback
+      // when frame deltas are smaller than a frame duration.
+      playbackState.setCurrentTime(nextTime);
 
       rafRef.current = requestAnimationFrame(tick);
     };

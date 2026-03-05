@@ -58,7 +58,7 @@ export function ProjectMenu() {
     <div className="flex items-center gap-2">
       <Link
         href="/projects"
-        className="text-sm font-bold text-blue-400 hover:text-blue-300 mr-1"
+        className="text-sm font-bold text-cyan-600 hover:text-cyan-700 mr-1"
       >
         ClipMotion
       </Link>
@@ -75,12 +75,12 @@ export function ProjectMenu() {
               setIsEditing(false);
             }
           }}
-          className="bg-gray-800 border border-gray-600 rounded px-2 py-0.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500 max-w-[200px]"
+          className="bg-white border border-[#d8e0e8] rounded px-2 py-0.5 text-sm text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500 max-w-[200px]"
         />
       ) : (
         <button
           onClick={() => setIsEditing(true)}
-          className="text-sm text-gray-300 hover:text-white truncate max-w-[200px] px-1 py-0.5 rounded hover:bg-gray-800 transition-colors"
+          className="text-sm text-gray-700 hover:text-gray-900 truncate max-w-[200px] px-1 py-0.5 rounded hover:bg-white transition-colors"
           title="Click to rename"
         >
           {projectName}
@@ -94,14 +94,14 @@ export function ProjectMenu() {
       <div className="relative" ref={dropdownRef}>
         <button
           onClick={() => setShowDropdown(!showDropdown)}
-          className="p-1 rounded text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+          className="p-1 rounded text-gray-400 hover:text-gray-900 hover:bg-white transition-colors"
           title="Project settings"
         >
           <ChevronDown className="w-3.5 h-3.5" />
         </button>
 
         {showDropdown && (
-          <div className="absolute top-full left-0 mt-1 w-64 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50 p-3 space-y-3">
+          <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-[#d8e0e8] rounded-lg shadow-xl z-50 p-3 space-y-3">
             {/* Canvas size presets */}
             <div>
               <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">
@@ -114,8 +114,8 @@ export function ProjectMenu() {
                     onClick={() => setCanvasDimensions(preset.width, preset.height)}
                     className={`text-[11px] px-2 py-1 rounded transition-colors ${
                       canvasWidth === preset.width && canvasHeight === preset.height
-                        ? "bg-blue-600 text-white"
-                        : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                        ? "bg-cyan-500 text-white"
+                        : "bg-[#eef2f6] text-gray-700 hover:bg-[#e5ebf1]"
                     }`}
                   >
                     {preset.label}
@@ -124,7 +124,7 @@ export function ProjectMenu() {
               </div>
               <div className="flex gap-2 mt-2">
                 <div className="flex-1">
-                  <label className="block text-[10px] text-gray-600 mb-0.5">Width</label>
+                  <label className="block text-[10px] text-gray-500 mb-0.5">Width</label>
                   <input
                     type="number"
                     value={canvasWidth}
@@ -132,11 +132,11 @@ export function ProjectMenu() {
                       const v = parseInt(e.target.value);
                       if (!isNaN(v) && v > 0) setCanvasDimensions(v, canvasHeight);
                     }}
-                    className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+                    className="w-full bg-white border border-[#d8e0e8] rounded px-2 py-1 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
                   />
                 </div>
                 <div className="flex-1">
-                  <label className="block text-[10px] text-gray-600 mb-0.5">Height</label>
+                  <label className="block text-[10px] text-gray-500 mb-0.5">Height</label>
                   <input
                     type="number"
                     value={canvasHeight}
@@ -144,7 +144,7 @@ export function ProjectMenu() {
                       const v = parseInt(e.target.value);
                       if (!isNaN(v) && v > 0) setCanvasDimensions(canvasWidth, v);
                     }}
-                    className="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+                    className="w-full bg-white border border-[#d8e0e8] rounded px-2 py-1 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
                   />
                 </div>
               </div>
@@ -167,8 +167,8 @@ export function ProjectMenu() {
                     onClick={() => setFps(fpsOption)}
                     className={`text-xs px-2 py-1 rounded transition-colors ${
                       fps === fpsOption
-                        ? "bg-blue-600 text-white"
-                        : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                        ? "bg-cyan-500 text-white"
+                        : "bg-[#eef2f6] text-gray-700 hover:bg-[#e5ebf1]"
                     }`}
                   >
                     {fpsOption}

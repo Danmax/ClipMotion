@@ -4,7 +4,6 @@ import type {
   SceneNode,
   NodeType,
   Transform,
-  NodeAnimation,
 } from "./types";
 import { DEFAULT_TRANSFORM } from "./types";
 
@@ -251,7 +250,7 @@ export function updateTransform(
 export function updateNode(
   doc: SceneDocument,
   nodeId: string,
-  updates: Partial<Pick<SceneNode, "name" | "visible" | "locked" | "showLabel" | "layer" | "pivot" | "assetId" | "shape" | "text" | "face" | "limbs">>
+  updates: Partial<Pick<SceneNode, "name" | "visible" | "locked" | "showLabel" | "layer" | "pivot" | "assetId" | "parallaxFactor" | "shape" | "text" | "face" | "faceKeyframes" | "limbs">>
 ): SceneDocument {
   const node = doc.nodes[nodeId];
   if (!node) throw new Error(`Node ${nodeId} not found`);
@@ -281,7 +280,7 @@ export function duplicateNode(
   const idMap = new Map<string, string>();
   const cloned = deepCloneNode(doc, nodeId, idMap);
 
-  let newDoc = { ...doc, nodes: { ...doc.nodes }, animations: { ...doc.animations } };
+  const newDoc = { ...doc, nodes: { ...doc.nodes }, animations: { ...doc.animations } };
 
   // Add all cloned nodes
   for (const [, newNode] of cloned.nodes) {

@@ -40,6 +40,7 @@ export function EditorShell({ project, scenes }: EditorShellProps) {
   const showSceneTree = useUIStore((s) => s.showSceneTree);
   const showProperties = useUIStore((s) => s.showProperties);
   const showAssetLibrary = useUIStore((s) => s.showAssetLibrary);
+  const setCanvasZoom = useUIStore((s) => s.setCanvasZoom);
 
   // Wire up editor hooks
   usePlayback();
@@ -58,16 +59,23 @@ export function EditorShell({ project, scenes }: EditorShellProps) {
       scenes,
       timelineData: project.timelineData ?? null,
     });
-  }, [project, scenes, loadProject]);
+    setCanvasZoom(1);
+  }, [project, scenes, loadProject, setCanvasZoom]);
 
   return (
-    <div className="h-screen flex flex-col bg-gray-950 text-white overflow-hidden">
+    <div className="h-screen flex bg-[#f1f3f5] text-gray-900 overflow-hidden">
+      <aside className="w-12 shrink-0">
+        <FloatingToolbar />
+      </aside>
+
+      <div className="flex-1 min-w-0 flex flex-col">
       <MenuBar onSave={save} saving={saving} />
 
       {/* Main area: docked side panels + canvas + adjustable timeline/storyboard */}
       <div className="flex-1 min-h-0">
         <Group orientation="vertical" className="h-full">
-          <Panel defaultSize={68} minSize={35}>
+          {/* react-resizable-panels v4 treats numeric sizes as px; use percentages explicitly. */}
+          <Panel defaultSize="68%" minSize="35%">
             <Group
               orientation="horizontal"
               className="h-full"
@@ -79,44 +87,47 @@ export function EditorShell({ project, scenes }: EditorShellProps) {
             >
               {showSceneTree && (
                 <>
-                  <Panel defaultSize={22} minSize={16} maxSize={34}>
-                    <div className="h-full bg-gray-900 border-r border-gray-800">
+                  <Panel defaultSize="22%" minSize="16%" maxSize="34%">
+                    <div className="h-full bg-[#0b0d14] text-gray-100 border-r border-[#1f2430]">
                       <SceneTreePanel />
                     </div>
                   </Panel>
-                  <Separator className="w-px bg-gray-800 hover:bg-blue-500 transition-colors" />
+                  <Separator className="w-px bg-[#d9dde3] hover:bg-cyan-500 transition-colors" />
                 </>
               )}
 
-              <Panel defaultSize={showSceneTree || showProperties || showAssetLibrary ? 56 : 70} minSize={28} maxSize={78}>
-                <div className="w-full h-full bg-gray-950 flex items-center justify-center px-4 py-3">
-                  <div className="relative w-[88%] max-w-[1200px] h-full min-h-0">
+              <Panel
+                defaultSize={showSceneTree || showProperties || showAssetLibrary ? "56%" : "70%"}
+                minSize="28%"
+                maxSize="78%"
+              >
+                <div className="w-full h-full bg-[#e7ebef] flex items-center justify-center px-4 py-3">
+                  <div className="relative w-[88%] max-w-[1280px] h-full min-h-0">
                     <CanvasViewport />
-                    <FloatingToolbar />
                   </div>
                 </div>
               </Panel>
 
               {(showProperties || showAssetLibrary) && (
-                <Separator className="w-px bg-gray-800 hover:bg-blue-500 transition-colors" />
+                <Separator className="w-px bg-[#d9dde3] hover:bg-cyan-500 transition-colors" />
               )}
 
               {showProperties && (
                 <>
-                  <Panel defaultSize={21} minSize={16} maxSize={34}>
-                    <div className="h-full bg-gray-900 border-l border-gray-800">
+                  <Panel defaultSize="21%" minSize="16%" maxSize="34%">
+                    <div className="h-full bg-[#ffffff] border-l border-[#e2e8f0]">
                       <PropertiesPanel />
                     </div>
                   </Panel>
                   {showAssetLibrary && (
-                    <Separator className="w-px bg-gray-800 hover:bg-blue-500 transition-colors" />
+                    <Separator className="w-px bg-[#d9dde3] hover:bg-cyan-500 transition-colors" />
                   )}
                 </>
               )}
 
               {showAssetLibrary && (
-                <Panel defaultSize={21} minSize={16} maxSize={34}>
-                  <div className="h-full bg-gray-900 border-l border-gray-800">
+                <Panel defaultSize="21%" minSize="16%" maxSize="34%">
+                  <div className="h-full bg-[#ffffff] border-l border-[#e2e8f0]">
                     <AssetLibraryPanel />
                   </div>
                 </Panel>
@@ -124,18 +135,19 @@ export function EditorShell({ project, scenes }: EditorShellProps) {
             </Group>
           </Panel>
 
-          <Separator className="h-px bg-gray-800 hover:bg-blue-500 transition-colors" />
+          <Separator className="h-px bg-[#d9dde3] hover:bg-cyan-500 transition-colors" />
 
-          <Panel defaultSize={26} minSize={16} maxSize={45}>
+          <Panel defaultSize="26%" minSize="16%" maxSize="45%">
             <TimelinePanel />
           </Panel>
 
-          <Separator className="h-px bg-gray-800 hover:bg-blue-500 transition-colors" />
+          <Separator className="h-px bg-[#d9dde3] hover:bg-cyan-500 transition-colors" />
 
-          <Panel defaultSize={10} minSize={8} maxSize={24}>
+          <Panel defaultSize="10%" minSize="8%" maxSize="24%">
             <StoryboardPanel />
           </Panel>
         </Group>
+      </div>
       </div>
     </div>
   );

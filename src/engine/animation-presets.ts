@@ -1,5 +1,6 @@
 import type {
   SceneDocument,
+  SceneNode,
   AnimatableProperty,
   EasingDefinition,
   Transform,
@@ -62,6 +63,11 @@ export interface PresetAnimationDefinition {
   defaultEasing: EasingDefinition;
   tracks: PresetTrackSpec[];
   dynamicTracks?: (ctx: PresetContext) => PresetTrackSpec[];
+}
+
+function getNodeAnimatableValue(node: SceneNode, property: AnimatableProperty): number {
+  if (property === "parallaxFactor") return node.parallaxFactor ?? 0;
+  return node.transform[property];
 }
 
 // ─── Preset Catalog ──────────────────────────────────────────
@@ -508,7 +514,7 @@ export function applyPresetAnimation(
 
       let value: number;
       if (trackSpec.mode === "relative") {
-        value = node.transform[trackSpec.property] + kfSpec.value;
+        value = getNodeAnimatableValue(node, trackSpec.property) + kfSpec.value;
       } else {
         value = kfSpec.value;
       }

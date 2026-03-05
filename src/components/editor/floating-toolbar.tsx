@@ -31,26 +31,26 @@ export function FloatingToolbar() {
   };
 
   return (
-    <div className="absolute top-2 left-2 bottom-2 z-20 flex flex-col gap-1 w-10">
-      {/* Panel toggles */}
-      <div className="bg-gray-900/95 backdrop-blur-sm rounded-lg border border-gray-800/60 shadow-xl p-1 flex flex-col gap-0.5">
-        {PANEL_TOGGLES.map(({ panel, icon: Icon, label, stateKey }) => {
-          const isActive = panelState[stateKey];
-          return (
-            <button
-              key={panel}
-              onClick={() => togglePanel(panel)}
-              title={label}
-              className={`p-2 rounded-md transition-colors ${
-                isActive
-                  ? "bg-blue-600/20 text-blue-400"
-                  : "text-gray-500 hover:text-gray-300 hover:bg-gray-800/60"
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-            </button>
-          );
-        })}
+    <div className="h-full w-full bg-[#05060a] border-r border-[#171a22] flex flex-col items-center py-3 gap-1">
+      {PANEL_TOGGLES.map(({ panel, icon: Icon, label, stateKey }) => {
+        const isActive = panelState[stateKey];
+        return (
+          <button
+            key={panel}
+            onClick={() => togglePanel(panel)}
+            title={label}
+            className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${
+              isActive
+                ? "bg-cyan-500/20 text-cyan-300"
+                : "text-gray-500 hover:text-gray-200 hover:bg-white/5"
+            }`}
+          >
+            <Icon className="w-4 h-4" />
+          </button>
+        );
+      })}
+      <div className="mt-auto mb-1 text-[9px] uppercase tracking-wider text-gray-600">
+        Tools
       </div>
     </div>
   );

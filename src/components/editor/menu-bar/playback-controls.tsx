@@ -17,19 +17,19 @@ export function PlaybackControls() {
     <div className="flex items-center gap-1">
       <button
         onClick={togglePlay}
-        className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+        className="p-1.5 rounded text-gray-500 hover:text-gray-900 hover:bg-white transition-colors"
         title={isPlaying ? "Pause (Space)" : "Play (Space)"}
       >
         {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
       </button>
       <button
         onClick={stop}
-        className="p-1.5 rounded text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+        className="p-1.5 rounded text-gray-500 hover:text-gray-900 hover:bg-white transition-colors"
         title="Stop"
       >
         <Square className="w-4 h-4" />
       </button>
-      <span className="text-xs font-mono text-gray-400 w-20 text-center">
+      <span className="text-xs font-mono text-gray-600 w-20 text-center">
         {formatTimecode(currentTimeMs, fps)} / {formatTimecode(durationMs, fps)}
       </span>
     </div>

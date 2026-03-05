@@ -7,6 +7,8 @@ import {
   Unlock,
   Plus,
   Trash2,
+  ArrowUp,
+  ArrowDown,
   Square,
   Circle,
   Triangle,
@@ -48,14 +50,22 @@ function getNodeIconColor(node: SceneNode): string {
 
 export function SceneTreePanel() {
   const document = useEditorStore((s) => s.document);
-  const addContainerNode = useEditorStore((s) => s.addContainerNode);
   const addSpriteNode = useEditorStore((s) => s.addSpriteNode);
   const removeNodeById = useEditorStore((s) => s.removeNodeById);
+  const reorderChildNode = useEditorStore((s) => s.reorderChildNode);
   const updateNodeProps = useEditorStore((s) => s.updateNodeProps);
   const selectedNodeIds = useSelectionStore((s) => s.selectedNodeIds);
   const selectNode = useSelectionStore((s) => s.selectNode);
 
   const rootNode = document.nodes[document.rootNodeId];
+  const selectedId = [...selectedNodeIds][0] ?? null;
+  const selectedNode = selectedId ? document.nodes[selectedId] : null;
+  const selectedParent = selectedNode?.parentId ? document.nodes[selectedNode.parentId] : null;
+  const selectedIndex = selectedParent && selectedId
+    ? selectedParent.childIds.indexOf(selectedId)
+    : -1;
+  const canMoveUp = !!selectedParent && selectedIndex > 0;
+  const canMoveDown = !!selectedParent && selectedIndex >= 0 && selectedIndex < selectedParent.childIds.length - 1;
 
   function renderTreeNode(nodeId: string, depth: number) {
     const node = document.nodes[nodeId];
@@ -135,6 +145,28 @@ export function SceneTreePanel() {
           Objects
         </span>
         <div className="flex gap-1">
+          <button
+            onClick={() => {
+              if (!selectedParent || selectedIndex <= 0) return;
+              reorderChildNode(selectedParent.id, selectedIndex, selectedIndex - 1);
+            }}
+            disabled={!canMoveUp}
+            className="p-1 rounded text-gray-400 hover:text-white hover:bg-gray-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            title="Move selected up in layer order"
+          >
+            <ArrowUp className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => {
+              if (!selectedParent || selectedIndex < 0 || selectedIndex >= selectedParent.childIds.length - 1) return;
+              reorderChildNode(selectedParent.id, selectedIndex, selectedIndex + 1);
+            }}
+            disabled={!canMoveDown}
+            className="p-1 rounded text-gray-400 hover:text-white hover:bg-gray-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            title="Move selected down in layer order"
+          >
+            <ArrowDown className="w-3.5 h-3.5" />
+          </button>
           <button
             onClick={() => addSpriteNode(`Object ${Object.keys(document.nodes).length}`)}
             className="p-1 rounded text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"

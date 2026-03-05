@@ -42,13 +42,13 @@ export function StoryboardPanel() {
   };
 
   return (
-    <div className="h-full min-h-[96px] border-t border-gray-800 bg-gray-900 flex items-center px-3 gap-3 overflow-x-auto">
+    <div className="h-full min-h-[96px] border-t border-[#e2e8f0] bg-[#ffffff] flex items-center px-3 gap-3 overflow-x-auto">
       {/* Label */}
       <div className="shrink-0 flex flex-col items-center gap-0.5 w-16">
-        <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">
+        <span className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">
           Scenes
         </span>
-        <span className="text-[10px] text-gray-600">
+        <span className="text-[10px] text-gray-500">
           {sceneOrder.length} total
         </span>
       </div>

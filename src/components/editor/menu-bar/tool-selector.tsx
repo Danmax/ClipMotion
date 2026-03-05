@@ -28,8 +28,8 @@ export function ToolSelector() {
           title={label}
           className={`p-1.5 rounded transition-colors ${
             activeTool === id
-              ? "bg-blue-600 text-white"
-              : "text-gray-400 hover:text-white hover:bg-gray-800"
+              ? "bg-cyan-500 text-white"
+              : "text-gray-500 hover:text-gray-900 hover:bg-white"
           }`}
         >
           <Icon className="w-4 h-4" />

@@ -217,8 +217,9 @@ export function CharacterBuilder({
 
   // Re-render character on every state change
   useEffect(() => {
+    if (!previewReady) return;
     renderPreview();
-  }, [renderPreview]);
+  }, [previewReady, renderPreview]);
 
   // Animate preview while talking mouth effect is enabled
   useEffect(() => {

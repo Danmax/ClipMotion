@@ -5,10 +5,8 @@ import { Plus, Trash2, Play } from "lucide-react";
 import { useEditorStore } from "@/store/editor-store";
 import { usePlaybackStore } from "@/store/playback-store";
 import {
-  ANIMATION_PRESETS,
   type AnimationPresetId,
 } from "@/engine/animation-presets";
-import { EASING_PRESETS } from "@/engine/easing";
 import { AnimationPicker } from "./animation-picker";
 import type { AnimatableProperty, NodeAnimation } from "@/engine/types";
 
@@ -16,8 +14,6 @@ interface AnimationSectionProps {
   nodeId: string;
   animation: NodeAnimation | undefined;
 }
-
-const EASING_OPTIONS = Object.keys(EASING_PRESETS) as (keyof typeof EASING_PRESETS)[];
 
 /**
  * Detect which preset was applied by examining the keyframe pattern.
@@ -68,18 +64,27 @@ export function AnimationSection({ nodeId, animation }: AnimationSectionProps) {
   const applyPreset = useEditorStore((s) => s.applyPreset);
   const clearAnimations = useEditorStore((s) => s.clearAnimations);
   const togglePlay = usePlaybackStore((s) => s.togglePlay);
+  const currentTimeMs = usePlaybackStore((s) => s.currentTimeMs);
 
   const appliedPresets = detectAppliedPresets(animation);
   const hasAnimations = appliedPresets.length > 0 && appliedPresets[0].keyframeCount > 0;
 
   const handleAddPreset = (presetId: AnimationPresetId) => {
-    applyPreset(nodeId, presetId);
+    // Insert preset keyframes at the current playhead instead of replacing existing tracks.
+    applyPreset(nodeId, presetId, {
+      delayMs: Math.max(0, Math.round(currentTimeMs)),
+      replaceExisting: false,
+    });
+    setShowPicker(false);
   };
 
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
         <label className="block text-xs text-gray-500">Animations</label>
+        <span className="text-[10px] text-gray-600">
+          Add at {Math.round(currentTimeMs)}ms
+        </span>
         <div className="flex gap-1">
           {hasAnimations && (
             <>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Square,
   Circle,
@@ -266,20 +266,11 @@ const BUILTIN_TEXT: BuiltinAsset[] = [
   },
 ];
 
-const COLOR_PRESETS = [
-  "#4a90d9",
-  "#e06c75",
-  "#50b583",
-  "#e5c07b",
-  "#c678dd",
-  "#56b6c2",
-  "#ffffff",
-  "#888888",
-];
-
 interface BackgroundLayerSpec {
   name: string;
   fill: string;
+  targetLayer: "background" | "normal" | "foreground";
+  parallaxFactor?: number;
   wFrac: number;   // fraction of canvasWidth
   hFrac: number;   // fraction of canvasHeight
   xFrac: number;   // x center as fraction of canvasWidth (0 = center)
@@ -297,28 +288,68 @@ const SCENE_BACKGROUNDS: SceneBackground[] = [
   {
     id: "sandbox", name: "Sandbox", preview: "#f0f0f0",
     layers: [
-      { name: "Background", fill: "#f0f0f0", wFrac: 1, hFrac: 1, xFrac: 0, yFrac: 0 },
+      { name: "Background", fill: "#f0f0f0", targetLayer: "background", wFrac: 1, hFrac: 1, xFrac: 0, yFrac: 0 },
     ],
   },
   {
     id: "outside", name: "Outside", preview: "#87ceeb",
     layers: [
-      { name: "Sky",    fill: "#87ceeb", wFrac: 1, hFrac: 0.5, xFrac: 0, yFrac: -0.25 },
-      { name: "Ground", fill: "#3a7d44", wFrac: 1, hFrac: 0.5, xFrac: 0, yFrac: 0.25  },
+      { name: "Sky",    fill: "#87ceeb", targetLayer: "background", wFrac: 1, hFrac: 0.5, xFrac: 0, yFrac: -0.25 },
+      { name: "Ground", fill: "#3a7d44", targetLayer: "background", wFrac: 1, hFrac: 0.5, xFrac: 0, yFrac: 0.25  },
     ],
   },
   {
     id: "moon", name: "Moon", preview: "#0a0a1a",
     layers: [
-      { name: "Space",   fill: "#0a0a1a", wFrac: 1, hFrac: 0.7, xFrac: 0, yFrac: -0.15 },
-      { name: "Surface", fill: "#9e9e9e", wFrac: 1, hFrac: 0.3, xFrac: 0, yFrac: 0.35  },
+      { name: "Space",   fill: "#0a0a1a", targetLayer: "background", wFrac: 1, hFrac: 0.7, xFrac: 0, yFrac: -0.15 },
+      { name: "Surface", fill: "#9e9e9e", targetLayer: "background", wFrac: 1, hFrac: 0.3, xFrac: 0, yFrac: 0.35  },
     ],
   },
   {
     id: "lab", name: "Lab", preview: "#2d3436",
     layers: [
-      { name: "Walls", fill: "#2d3436", wFrac: 1, hFrac: 1,    xFrac: 0, yFrac: 0    },
-      { name: "Floor", fill: "#636e72", wFrac: 1, hFrac: 0.28, xFrac: 0, yFrac: 0.36 },
+      { name: "Walls", fill: "#2d3436", targetLayer: "background", wFrac: 1, hFrac: 1,    xFrac: 0, yFrac: 0    },
+      { name: "Floor", fill: "#636e72", targetLayer: "background", wFrac: 1, hFrac: 0.28, xFrac: 0, yFrac: 0.36 },
+    ],
+  },
+];
+
+interface CreativeScenePreset {
+  id: string;
+  name: string;
+  preview: string;
+  layers: BackgroundLayerSpec[];
+}
+
+const CREATIVE_SCENE_PRESETS: CreativeScenePreset[] = [
+  {
+    id: "sunset-city",
+    name: "Sunset City",
+    preview: "#f08a5d",
+    layers: [
+      { name: "Sky Gradient", fill: "#f08a5d", targetLayer: "background", wFrac: 1, hFrac: 1, xFrac: 0, yFrac: 0 },
+      { name: "Far Buildings", fill: "#6c5b7b", targetLayer: "normal", parallaxFactor: 0.6, wFrac: 1, hFrac: 0.28, xFrac: 0, yFrac: 0.28 },
+      { name: "Street Foreground", fill: "#2d3142", targetLayer: "foreground", parallaxFactor: 1.2, wFrac: 1, hFrac: 0.18, xFrac: 0, yFrac: 0.41 },
+    ],
+  },
+  {
+    id: "forest-depth",
+    name: "Forest Depth",
+    preview: "#6a994e",
+    layers: [
+      { name: "Sky Mist", fill: "#a7c957", targetLayer: "background", wFrac: 1, hFrac: 1, xFrac: 0, yFrac: 0 },
+      { name: "Tree Line", fill: "#386641", targetLayer: "normal", parallaxFactor: 0.65, wFrac: 1, hFrac: 0.42, xFrac: 0, yFrac: 0.23 },
+      { name: "Bush Foreground", fill: "#1b4332", targetLayer: "foreground", parallaxFactor: 1.25, wFrac: 1, hFrac: 0.18, xFrac: 0, yFrac: 0.41 },
+    ],
+  },
+  {
+    id: "space-station",
+    name: "Space Station",
+    preview: "#0b132b",
+    layers: [
+      { name: "Deep Space", fill: "#0b132b", targetLayer: "background", wFrac: 1, hFrac: 1, xFrac: 0, yFrac: 0 },
+      { name: "Station Mid", fill: "#3a506b", targetLayer: "normal", parallaxFactor: 0.7, wFrac: 1, hFrac: 0.35, xFrac: 0, yFrac: 0.26 },
+      { name: "Control Deck", fill: "#1c2541", targetLayer: "foreground", parallaxFactor: 1.3, wFrac: 1, hFrac: 0.2, xFrac: 0, yFrac: 0.4 },
     ],
   },
 ];
@@ -331,18 +362,40 @@ interface UserCharacter {
   limbsData?: string;
 }
 
+function getDefaultParallaxForLayer(layer: "background" | "normal" | "foreground"): number {
+  if (layer === "background") return 0.2;
+  if (layer === "normal") return 0.65;
+  return 1.2;
+}
+
 export function AssetLibraryPanel() {
+  const document = useEditorStore((s) => s.document);
   const addShapeNode = useEditorStore((s) => s.addShapeNode);
   const addShapeNodeWithFace = useEditorStore((s) => s.addShapeNodeWithFace);
   const addCharacterNode = useEditorStore((s) => s.addCharacterNode);
   const addTextNode = useEditorStore((s) => s.addTextNode);
   const addContainerNode = useEditorStore((s) => s.addContainerNode);
+  const removeNodeById = useEditorStore((s) => s.removeNodeById);
   const updateNodeProps = useEditorStore((s) => s.updateNodeProps);
   const canvasWidth = useEditorStore((s) => s.canvasWidth);
   const canvasHeight = useEditorStore((s) => s.canvasHeight);
   const selectNode = useSelectionStore((s) => s.selectNode);
+  const spawnCounterRef = useRef(0);
 
   const [userCharacters, setUserCharacters] = useState<UserCharacter[]>([]);
+  const [includeBgLayer, setIncludeBgLayer] = useState(true);
+  const [includeMidLayer, setIncludeMidLayer] = useState(true);
+  const [includeFgLayer, setIncludeFgLayer] = useState(true);
+
+  const nextSpawnPos = () => {
+    const i = spawnCounterRef.current++;
+    const angle = (i % 24) * (Math.PI / 12);
+    const radius = 20 + (i % 5) * 10;
+    return {
+      x: Math.cos(angle) * radius,
+      y: Math.sin(angle) * radius,
+    };
+  };
 
   useEffect(() => {
     fetch("/api/characters")
@@ -352,9 +405,7 @@ export function AssetLibraryPanel() {
   }, []);
 
   const handleAddAsset = (asset: BuiltinAsset) => {
-    const offsetX = (Math.random() - 0.5) * 60;
-    const offsetY = (Math.random() - 0.5) * 60;
-    const pos = { x: offsetX, y: offsetY };
+    const pos = nextSpawnPos();
 
     let nodeId: string;
 
@@ -385,9 +436,7 @@ export function AssetLibraryPanel() {
       const shape = JSON.parse(char.shapeData) as ShapeProps;
       const face = JSON.parse(char.faceData) as FaceProps;
       const limbs = char.limbsData ? JSON.parse(char.limbsData) as LimbProps : undefined;
-      const offsetX = (Math.random() - 0.5) * 60;
-      const offsetY = (Math.random() - 0.5) * 60;
-      const pos = { x: offsetX, y: offsetY };
+      const pos = nextSpawnPos();
       const nodeId = limbs
         ? addCharacterNode(char.name, shape, face, limbs, pos)
         : addShapeNodeWithFace(char.name, shape, face, pos);
@@ -398,6 +447,13 @@ export function AssetLibraryPanel() {
   };
 
   const handleAddBackground = (bg: SceneBackground) => {
+    const autoLayerIds = Object.values(document.nodes)
+      .filter((node) => node.id !== document.rootNodeId && node.assetId?.startsWith("scene-layer:"))
+      .map((node) => node.id);
+    for (const nodeId of autoLayerIds) {
+      removeNodeById(nodeId);
+    }
+
     for (const layer of bg.layers) {
       const nodeId = addShapeNode(
         layer.name,
@@ -409,7 +465,45 @@ export function AssetLibraryPanel() {
         },
         { x: layer.xFrac * canvasWidth, y: layer.yFrac * canvasHeight }
       );
-      updateNodeProps(nodeId, { layer: "background" });
+      updateNodeProps(nodeId, {
+        assetId: `scene-layer:bg:${bg.id}:${layer.name}`,
+        layer: layer.targetLayer,
+        parallaxFactor: layer.parallaxFactor ?? getDefaultParallaxForLayer(layer.targetLayer),
+      });
+    }
+  };
+
+  const shouldIncludeSceneLayer = (layer: BackgroundLayerSpec): boolean => {
+    if (layer.targetLayer === "background") return includeBgLayer;
+    if (layer.targetLayer === "normal") return includeMidLayer;
+    return includeFgLayer;
+  };
+
+  const handleCreateCreativeScene = (preset: CreativeScenePreset) => {
+    const autoLayerIds = Object.values(document.nodes)
+      .filter((node) => node.id !== document.rootNodeId && node.assetId?.startsWith("scene-layer:"))
+      .map((node) => node.id);
+    for (const nodeId of autoLayerIds) {
+      removeNodeById(nodeId);
+    }
+
+    for (const layer of preset.layers) {
+      if (!shouldIncludeSceneLayer(layer)) continue;
+      const nodeId = addShapeNode(
+        layer.name,
+        {
+          shapeType: "rectangle",
+          width: Math.round(layer.wFrac * canvasWidth),
+          height: Math.round(layer.hFrac * canvasHeight),
+          fill: layer.fill,
+        },
+        { x: layer.xFrac * canvasWidth, y: layer.yFrac * canvasHeight }
+      );
+      updateNodeProps(nodeId, {
+        assetId: `scene-layer:preset:${preset.id}:${layer.name}`,
+        layer: layer.targetLayer,
+        parallaxFactor: layer.parallaxFactor ?? getDefaultParallaxForLayer(layer.targetLayer),
+      });
     }
   };
 
@@ -422,6 +516,61 @@ export function AssetLibraryPanel() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-4">
+        {/* Scene creator: background/middleground/foreground composition */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-xs font-medium text-gray-500">Scene Creator</h3>
+            <span className="text-[10px] text-gray-600">BG / Mid / FG</span>
+          </div>
+          <div className="mb-2 flex flex-wrap gap-2">
+            <label className="flex items-center gap-1 text-[10px] text-gray-500">
+              <input
+                type="checkbox"
+                checked={includeBgLayer}
+                onChange={(e) => setIncludeBgLayer(e.target.checked)}
+                className="rounded border border-gray-600 bg-gray-800 cursor-pointer"
+              />
+              Background
+            </label>
+            <label className="flex items-center gap-1 text-[10px] text-gray-500">
+              <input
+                type="checkbox"
+                checked={includeMidLayer}
+                onChange={(e) => setIncludeMidLayer(e.target.checked)}
+                className="rounded border border-gray-600 bg-gray-800 cursor-pointer"
+              />
+              Middleground
+            </label>
+            <label className="flex items-center gap-1 text-[10px] text-gray-500">
+              <input
+                type="checkbox"
+                checked={includeFgLayer}
+                onChange={(e) => setIncludeFgLayer(e.target.checked)}
+                className="rounded border border-gray-600 bg-gray-800 cursor-pointer"
+              />
+              Foreground
+            </label>
+          </div>
+          <div className="grid grid-cols-2 gap-1.5">
+            {CREATIVE_SCENE_PRESETS.map((preset) => (
+              <button
+                key={preset.id}
+                onClick={() => handleCreateCreativeScene(preset)}
+                className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-gray-800 transition-colors group"
+                title={`Create ${preset.name} scene`}
+              >
+                <div
+                  className="w-10 h-6 rounded-md border border-gray-700"
+                  style={{ backgroundColor: preset.preview }}
+                />
+                <span className="text-[10px] text-gray-500 group-hover:text-gray-300 truncate w-full text-center">
+                  {preset.name}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Backgrounds — first, since it's the most common first step */}
         <div>
           <h3 className="text-xs font-medium text-gray-500 mb-2">Backgrounds</h3>
