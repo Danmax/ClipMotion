@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ─── Auth ────────────────────────────────────────────────────
@@ -83,7 +84,7 @@ model Project {
   thumbnail   String?
   status      String   @default("DRAFT")
   version     Int      @default(1)
-  timelineData String?  @db.LongText
+  timelineData String?  @db.Text
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -100,7 +101,7 @@ model Scene {
   projectId  String
   name       String   @default("Scene 1")
   order      Int      @default(0)
-  data       String   @db.LongText
+  data       String   @db.Text
   durationMs Int      @default(3000)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt

@@ -54,9 +54,12 @@ Open `http://localhost:3000`.
 
 ## Database / Infra Notes
 
-- Current default Prisma datasource is MySQL.
-- Set `DATABASE_URL` to your MySQL instance (example in `.env.example`).
-- `docker-compose.yml` includes optional local PostgreSQL, Redis, and MinIO; if you use it, update Prisma datasource/provider accordingly.
+- Current default Prisma datasource is PostgreSQL (Supabase-friendly).
+- Set both `DATABASE_URL` and `DIRECT_URL` (examples in `.env.example`).
+- For Supabase:
+  - `DATABASE_URL` should use the pooled connection string (`pgbouncer=true`).
+  - `DIRECT_URL` should use the direct Postgres connection (used by Prisma migrations).
+- `docker-compose.yml` includes optional local PostgreSQL, Redis, and MinIO.
 
 ## Scripts
 
