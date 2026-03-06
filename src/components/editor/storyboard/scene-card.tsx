@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { Copy } from "lucide-react";
 
 interface SceneCardProps {
   sceneId: string;
@@ -95,6 +96,19 @@ export function SceneCard({
       <div className="absolute top-1.5 left-1.5 w-5 h-5 rounded bg-gray-700 flex items-center justify-center">
         <span className="text-[10px] font-bold text-gray-300">{index + 1}</span>
       </div>
+
+      {/* Quick duplicate action */}
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onDuplicate();
+        }}
+        className="absolute top-1.5 right-1.5 w-5 h-5 rounded bg-gray-700/90 hover:bg-blue-600/90 text-gray-300 hover:text-white flex items-center justify-center transition-colors"
+        title="Duplicate scene"
+      >
+        <Copy className="w-3 h-3" />
+      </button>
 
       {/* Content area */}
       <div className="absolute inset-0 flex flex-col justify-end p-2">

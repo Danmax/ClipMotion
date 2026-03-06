@@ -2,13 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { FPS_OPTIONS, DEFAULT_FPS } from "@/lib/constants";
+import { DEFAULT_FPS, DEFAULT_PROJECT_DURATION_MS } from "@/lib/constants";
 
 export default function NewProjectPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState("");
-  const [fps, setFps] = useState<number>(DEFAULT_FPS);
   const [error, setError] = useState<string | null>(null);
 
   async function handleCreate(e: React.FormEvent) {
@@ -20,7 +19,7 @@ export default function NewProjectPage() {
       const res = await fetch("/api/projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name || "Untitled Project", fps }),
+        body: JSON.stringify({ name: name || "Untitled Project", fps: DEFAULT_FPS }),
       });
 
       if (res.ok) {
@@ -67,26 +66,25 @@ export default function NewProjectPage() {
           <label className="block text-sm font-medium text-gray-300 mb-2">
             Frame Rate
           </label>
-          <div className="flex gap-2">
-            {FPS_OPTIONS.map((option) => (
-              <button
-                key={option}
-                type="button"
-                onClick={() => setFps(option)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  fps === option
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white"
-                }`}
-              >
-                {option} fps
-              </button>
-            ))}
+          <div className="rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white">
+            {DEFAULT_FPS} fps
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Clip Length
+          </label>
+          <div className="rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white">
+            {Math.round(DEFAULT_PROJECT_DURATION_MS / 1000)} seconds
           </div>
         </div>
 
         <div className="p-4 rounded-lg bg-gray-800/50 border border-gray-700/50">
           <p className="text-sm text-gray-400">
+            <span className="text-white font-medium">Defaults:</span> {DEFAULT_FPS} fps and {Math.round(DEFAULT_PROJECT_DURATION_MS / 1000)} second clips.
+          </p>
+          <p className="text-sm text-gray-400 mt-1">
             <span className="text-white font-medium">Free tier:</span> Up to 30 seconds, 720p max export with watermark.
           </p>
         </div>

@@ -616,16 +616,16 @@ export function PropertiesPanel() {
 
         {/* Selected keyframe editing */}
         <div>
-          <label className="block text-xs text-gray-500 mb-2">Keyframe Properties</label>
+          <label className="block text-xs text-gray-300 mb-2">Keyframe Properties</label>
           {activeKeyframe && selectedKeyframe ? (
-            <div className="space-y-2 rounded border border-gray-700 bg-gray-800/70 p-2">
+            <div className="space-y-2 rounded border border-gray-600 bg-gray-900/85 p-2">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] text-gray-300">Property</span>
-                <span className="text-[11px] text-yellow-300">{selectedKeyframe.property}</span>
+                <span className="text-[11px] text-gray-200">Property</span>
+                <span className="text-[11px] text-yellow-200">{selectedKeyframe.property}</span>
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500 w-20">Time (ms)</span>
+                <span className="text-xs text-gray-200 font-medium w-20">Time (ms)</span>
                 <input
                   type="number"
                   value={Math.round(activeKeyframe.timeMs)}
@@ -642,12 +642,12 @@ export function PropertiesPanel() {
                       timeMs: nextTimeMs,
                     });
                   }}
-                  className="flex-1 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                  className="flex-1 bg-gray-950 border border-gray-600 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 />
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500 w-20">Value</span>
+                <span className="text-xs text-gray-200 font-medium w-20">Value</span>
                 <input
                   type="number"
                   value={Math.round(activeKeyframe.value * 1000) / 1000}
@@ -672,12 +672,12 @@ export function PropertiesPanel() {
                       value: nextValue,
                     });
                   }}
-                  className="flex-1 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                  className="flex-1 bg-gray-950 border border-gray-600 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 />
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500 w-20">Easing</span>
+                <span className="text-xs text-gray-200 font-medium w-20">Easing</span>
                 <select
                   value={activeKeyframeEasingId}
                   onChange={(e) => {
@@ -694,7 +694,7 @@ export function PropertiesPanel() {
                       easing: next.easing,
                     });
                   }}
-                  className="flex-1 bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="flex-1 bg-gray-950 border border-gray-600 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
                   {KEYFRAME_EASING_OPTIONS.map((opt) => (
                     <option key={opt.id} value={opt.id}>

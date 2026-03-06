@@ -15,9 +15,22 @@ import {
 } from "lucide-react";
 import { useEditorStore } from "@/store/editor-store";
 import { useSelectionStore } from "@/store/selection-store";
-import type { ShapeProps, TextProps, FaceProps, LimbProps, AccessoryProps } from "@/engine/types";
+import type {
+  ShapeProps,
+  TextProps,
+  FaceProps,
+  LimbProps,
+  AccessoryProps,
+  AnimatableProperty,
+  EasingDefinition,
+} from "@/engine/types";
 import { DEFAULT_LIMBS } from "@/engine/types";
 import { applyPreset } from "@/engine/face-presets";
+import {
+  generateStoryScenePlan,
+  type StoryLayerPlan,
+  type StoryNodePlan,
+} from "@/lib/story-prompt-generator";
 import Link from "next/link";
 
 interface BuiltinAsset {
@@ -394,6 +407,52 @@ interface CreativeScenePreset {
   layers: BackgroundLayerSpec[];
 }
 
+interface DynamicTrackKeyframe {
+  at: number; // 0..1 of project duration
+  value: number;
+  easing?: EasingDefinition;
+}
+
+type DynamicTrackMap = Partial<Record<AnimatableProperty, DynamicTrackKeyframe[]>>;
+
+interface LivescapeContext {
+  canvasWidth: number;
+  canvasHeight: number;
+  durationMs: number;
+}
+
+interface LivescapeDynamicElement {
+  id: string;
+  name: string;
+  targetLayer: "background" | "normal" | "foreground";
+  parallaxFactor?: number;
+  xFrac: number;
+  yFrac: number;
+  opacity?: number;
+  shapeFactory: (ctx: LivescapeContext) => ShapeProps;
+  trackFactory?: (ctx: LivescapeContext) => DynamicTrackMap;
+}
+
+interface LivescapeScenePreset extends CreativeScenePreset {
+  dynamicElements: LivescapeDynamicElement[];
+}
+
+const EASE_LINEAR: EasingDefinition = { type: "linear" };
+const EASE_DRIFT: EasingDefinition = { type: "cubicBezier", controlPoints: [0.22, 0.05, 0.28, 1] };
+const EASE_SWAY: EasingDefinition = { type: "cubicBezier", controlPoints: [0.4, 0, 0.2, 1] };
+const EASE_STEP: EasingDefinition = { type: "step" };
+
+function starFlicker(offset: number): DynamicTrackKeyframe[] {
+  const beats = [0.2, 0.82, 0.3, 0.95, 0.26, 0.76, 0.22];
+  return beats
+    .map((value, index) => {
+      const raw = offset + (index / (beats.length - 1)) * 0.92;
+      const at = raw >= 1 ? raw - 1 : raw;
+      return { at, value, easing: EASE_STEP };
+    })
+    .sort((a, b) => a.at - b.at);
+}
+
 const CREATIVE_SCENE_PRESETS: CreativeScenePreset[] = [
   {
     id: "sunset-city",
@@ -487,6 +546,247 @@ const CREATIVE_SCENE_PRESETS: CreativeScenePreset[] = [
   },
 ];
 
+const LIVESCAPE_SCENE_PRESETS: LivescapeScenePreset[] = [
+  {
+    id: "livescape-night-rail",
+    name: "Livescape Night Rail",
+    preview: "#0b132b",
+    layers: [
+      { name: "Night Sky", fill: "#0b132b", targetLayer: "background", wFrac: 1, hFrac: 1, xFrac: 0, yFrac: 0 },
+      { name: "Distant Ridge", fill: "#1c2541", targetLayer: "normal", parallaxFactor: 0.52, wFrac: 1, hFrac: 0.34, xFrac: 0, yFrac: 0.24 },
+      { name: "Track Bed", fill: "#111827", targetLayer: "foreground", parallaxFactor: 1.18, wFrac: 1, hFrac: 0.22, xFrac: 0, yFrac: 0.39 },
+    ],
+    dynamicElements: [
+      {
+        id: "cloud-bank",
+        name: "Cloud Bank",
+        targetLayer: "background",
+        parallaxFactor: 0.2,
+        xFrac: -0.48,
+        yFrac: -0.31,
+        opacity: 0.24,
+        shapeFactory: ({ canvasWidth, canvasHeight }) => ({
+          shapeType: "capsule",
+          width: Math.round(canvasWidth * 0.34),
+          height: Math.round(canvasHeight * 0.12),
+          fill: "#c8d6ff",
+          cornerRadius: 26,
+        }),
+        trackFactory: ({ canvasWidth }) => ({
+          x: [
+            { at: 0, value: -0.48 * canvasWidth, easing: EASE_DRIFT },
+            { at: 1, value: 0.58 * canvasWidth, easing: EASE_DRIFT },
+          ],
+          opacity: [
+            { at: 0, value: 0.2, easing: EASE_SWAY },
+            { at: 0.5, value: 0.34, easing: EASE_SWAY },
+            { at: 1, value: 0.2, easing: EASE_SWAY },
+          ],
+        }),
+      },
+      {
+        id: "mist-layer",
+        name: "Mist Drift",
+        targetLayer: "foreground",
+        parallaxFactor: 1.05,
+        xFrac: 0,
+        yFrac: 0.33,
+        opacity: 0.16,
+        shapeFactory: ({ canvasWidth, canvasHeight }) => ({
+          shapeType: "rectangle",
+          width: Math.round(canvasWidth * 1.08),
+          height: Math.round(canvasHeight * 0.13),
+          fill: "#d8e2ec",
+          cornerRadius: 20,
+        }),
+        trackFactory: ({ canvasWidth }) => ({
+          x: [
+            { at: 0, value: -0.08 * canvasWidth, easing: EASE_DRIFT },
+            { at: 0.5, value: 0.08 * canvasWidth, easing: EASE_DRIFT },
+            { at: 1, value: -0.08 * canvasWidth, easing: EASE_DRIFT },
+          ],
+          opacity: [
+            { at: 0, value: 0.1, easing: EASE_SWAY },
+            { at: 0.5, value: 0.22, easing: EASE_SWAY },
+            { at: 1, value: 0.1, easing: EASE_SWAY },
+          ],
+        }),
+      },
+      {
+        id: "bird-1",
+        name: "Flying Bird A",
+        targetLayer: "normal",
+        parallaxFactor: 0.68,
+        xFrac: -0.46,
+        yFrac: -0.2,
+        opacity: 0.9,
+        shapeFactory: () => ({
+          shapeType: "triangle",
+          width: 34,
+          height: 24,
+          fill: "#f1f5f9",
+        }),
+        trackFactory: ({ canvasWidth, canvasHeight }) => ({
+          x: [
+            { at: 0, value: -0.46 * canvasWidth, easing: EASE_LINEAR },
+            { at: 1, value: 0.56 * canvasWidth, easing: EASE_LINEAR },
+          ],
+          y: [
+            { at: 0, value: -0.2 * canvasHeight, easing: EASE_SWAY },
+            { at: 0.35, value: -0.16 * canvasHeight, easing: EASE_SWAY },
+            { at: 0.7, value: -0.22 * canvasHeight, easing: EASE_SWAY },
+            { at: 1, value: -0.18 * canvasHeight, easing: EASE_SWAY },
+          ],
+        }),
+      },
+      {
+        id: "bird-2",
+        name: "Flying Bird B",
+        targetLayer: "normal",
+        parallaxFactor: 0.72,
+        xFrac: -0.58,
+        yFrac: -0.14,
+        opacity: 0.86,
+        shapeFactory: () => ({
+          shapeType: "triangle",
+          width: 30,
+          height: 20,
+          fill: "#e2e8f0",
+        }),
+        trackFactory: ({ canvasWidth, canvasHeight }) => ({
+          x: [
+            { at: 0, value: -0.58 * canvasWidth, easing: EASE_LINEAR },
+            { at: 1, value: 0.48 * canvasWidth, easing: EASE_LINEAR },
+          ],
+          y: [
+            { at: 0, value: -0.14 * canvasHeight, easing: EASE_SWAY },
+            { at: 0.32, value: -0.1 * canvasHeight, easing: EASE_SWAY },
+            { at: 0.64, value: -0.16 * canvasHeight, easing: EASE_SWAY },
+            { at: 1, value: -0.12 * canvasHeight, easing: EASE_SWAY },
+          ],
+        }),
+      },
+      {
+        id: "star-a",
+        name: "Star A",
+        targetLayer: "background",
+        parallaxFactor: 0.1,
+        xFrac: -0.34,
+        yFrac: -0.4,
+        opacity: 0.65,
+        shapeFactory: () => ({
+          shapeType: "star",
+          width: 16,
+          height: 16,
+          fill: "#fff1a8",
+          points: 5,
+        }),
+        trackFactory: () => ({ opacity: starFlicker(0) }),
+      },
+      {
+        id: "star-b",
+        name: "Star B",
+        targetLayer: "background",
+        parallaxFactor: 0.08,
+        xFrac: -0.08,
+        yFrac: -0.35,
+        opacity: 0.6,
+        shapeFactory: () => ({
+          shapeType: "star",
+          width: 14,
+          height: 14,
+          fill: "#fff6bf",
+          points: 5,
+        }),
+        trackFactory: () => ({ opacity: starFlicker(0.11) }),
+      },
+      {
+        id: "star-c",
+        name: "Star C",
+        targetLayer: "background",
+        parallaxFactor: 0.12,
+        xFrac: 0.18,
+        yFrac: -0.42,
+        opacity: 0.7,
+        shapeFactory: () => ({
+          shapeType: "star",
+          width: 18,
+          height: 18,
+          fill: "#fff2b8",
+          points: 6,
+        }),
+        trackFactory: () => ({ opacity: starFlicker(0.23) }),
+      },
+      {
+        id: "star-d",
+        name: "Star D",
+        targetLayer: "background",
+        parallaxFactor: 0.1,
+        xFrac: 0.37,
+        yFrac: -0.3,
+        opacity: 0.62,
+        shapeFactory: () => ({
+          shapeType: "star",
+          width: 13,
+          height: 13,
+          fill: "#ffef99",
+          points: 5,
+        }),
+        trackFactory: () => ({ opacity: starFlicker(0.37) }),
+      },
+      {
+        id: "train-body",
+        name: "Parallax Train Body",
+        targetLayer: "foreground",
+        parallaxFactor: 1.42,
+        xFrac: -0.84,
+        yFrac: 0.31,
+        opacity: 0.98,
+        shapeFactory: ({ canvasWidth, canvasHeight }) => ({
+          shapeType: "rectangle",
+          width: Math.round(canvasWidth * 0.42),
+          height: Math.round(canvasHeight * 0.1),
+          fill: "#2a9d8f",
+          cornerRadius: 12,
+        }),
+        trackFactory: ({ canvasWidth }) => ({
+          x: [
+            { at: 0, value: -0.84 * canvasWidth, easing: EASE_LINEAR },
+            { at: 0.9, value: 0.9 * canvasWidth, easing: EASE_LINEAR },
+          ],
+          parallaxFactor: [
+            { at: 0, value: 1.28, easing: EASE_SWAY },
+            { at: 0.45, value: 1.52, easing: EASE_SWAY },
+            { at: 0.9, value: 1.28, easing: EASE_SWAY },
+          ],
+        }),
+      },
+      {
+        id: "train-cabin",
+        name: "Parallax Train Cabin",
+        targetLayer: "foreground",
+        parallaxFactor: 1.45,
+        xFrac: -0.66,
+        yFrac: 0.26,
+        opacity: 0.98,
+        shapeFactory: ({ canvasWidth, canvasHeight }) => ({
+          shapeType: "rectangle",
+          width: Math.round(canvasWidth * 0.14),
+          height: Math.round(canvasHeight * 0.07),
+          fill: "#e9c46a",
+          cornerRadius: 8,
+        }),
+        trackFactory: ({ canvasWidth }) => ({
+          x: [
+            { at: 0, value: -0.66 * canvasWidth, easing: EASE_LINEAR },
+            { at: 0.9, value: 1.08 * canvasWidth, easing: EASE_LINEAR },
+          ],
+        }),
+      },
+    ],
+  },
+];
+
 interface UserCharacter {
   id: string;
   name: string;
@@ -513,6 +813,9 @@ export function AssetLibraryPanel() {
   const updateNodeProps = useEditorStore((s) => s.updateNodeProps);
   const canvasWidth = useEditorStore((s) => s.canvasWidth);
   const canvasHeight = useEditorStore((s) => s.canvasHeight);
+  const durationMs = useEditorStore((s) => s.durationMs);
+  const setKeyframeAt = useEditorStore((s) => s.setKeyframeAt);
+  const setExpressionKeyframeAt = useEditorStore((s) => s.setExpressionKeyframeAt);
   const selectNode = useSelectionStore((s) => s.selectNode);
   const spawnCounterRef = useRef(0);
 
@@ -520,6 +823,9 @@ export function AssetLibraryPanel() {
   const [includeBgLayer, setIncludeBgLayer] = useState(true);
   const [includeMidLayer, setIncludeMidLayer] = useState(true);
   const [includeFgLayer, setIncludeFgLayer] = useState(true);
+  const [storyPrompt, setStoryPrompt] = useState("");
+  const [storyStatus, setStoryStatus] = useState<string | null>(null);
+  const [isGeneratingStory, setIsGeneratingStory] = useState(false);
 
   const nextSpawnPos = () => {
     const i = spawnCounterRef.current++;
@@ -602,13 +908,91 @@ export function AssetLibraryPanel() {
     }
   };
 
-  const handleAddBackground = (bg: SceneBackground) => {
+  const isAutoSceneNode = (assetId: string | undefined): boolean =>
+    !!assetId &&
+    (assetId.startsWith("scene-layer:") ||
+      assetId.startsWith("scene-dynamic:") ||
+      assetId.startsWith("scene-ai:"));
+
+  const clearAutoSceneNodes = () => {
     const autoLayerIds = Object.values(document.nodes)
-      .filter((node) => node.id !== document.rootNodeId && node.assetId?.startsWith("scene-layer:"))
+      .filter((node) => node.id !== document.rootNodeId && isAutoSceneNode(node.assetId))
       .map((node) => node.id);
-    for (const nodeId of autoLayerIds) {
-      removeNodeById(nodeId);
+    for (const nodeId of autoLayerIds) removeNodeById(nodeId);
+  };
+
+  const applyStoryLayer = (planId: string, layer: StoryLayerPlan) => {
+    const nodeId = addShapeNode(
+      layer.name,
+      {
+        shapeType: "rectangle",
+        width: Math.round(layer.wFrac * canvasWidth),
+        height: Math.round(layer.hFrac * canvasHeight),
+        fill: layer.fill,
+      },
+      { x: layer.xFrac * canvasWidth, y: layer.yFrac * canvasHeight }
+    );
+    updateNodeProps(nodeId, {
+      assetId: `scene-ai:${planId}:layer:${layer.id}`,
+      layer: layer.targetLayer,
+      parallaxFactor: layer.parallaxFactor ?? getDefaultParallaxForLayer(layer.targetLayer),
+    });
+  };
+
+  const applyStoryNode = (planId: string, node: StoryNodePlan): string => {
+    const baseTransform = {
+      x: node.transform.x,
+      y: node.transform.y,
+      rotation: node.transform.rotation,
+      scaleX: node.transform.scaleX,
+      scaleY: node.transform.scaleY,
+      opacity: node.transform.opacity,
+    };
+
+    let nodeId: string;
+    if (node.face && node.limbs) {
+      nodeId = addCharacterNode(
+        node.name,
+        node.shape,
+        node.face,
+        node.limbs,
+        node.accessories,
+        baseTransform
+      );
+    } else if (node.face) {
+      nodeId = addShapeNodeWithFace(node.name, node.shape, node.face, baseTransform);
+    } else {
+      nodeId = addShapeNode(node.name, node.shape, baseTransform);
     }
+
+    updateNodeProps(nodeId, {
+      assetId: `scene-ai:${planId}:node:${node.id}`,
+      layer: node.layer,
+      parallaxFactor: node.parallaxFactor ?? getDefaultParallaxForLayer(node.layer),
+    });
+
+    if (node.tracks) {
+      const properties = Object.keys(node.tracks) as AnimatableProperty[];
+      for (const property of properties) {
+        const keyframes = node.tracks[property];
+        if (!keyframes || keyframes.length === 0) continue;
+        for (const keyframe of keyframes) {
+          setKeyframeAt(nodeId, property, keyframe.timeMs, keyframe.value, keyframe.easing);
+        }
+      }
+    }
+
+    if (node.expressionKeys && node.expressionKeys.length > 0) {
+      for (const key of node.expressionKeys) {
+        setExpressionKeyframeAt(nodeId, key.timeMs, key.face);
+      }
+    }
+
+    return nodeId;
+  };
+
+  const handleAddBackground = (bg: SceneBackground) => {
+    clearAutoSceneNodes();
 
     for (const layer of bg.layers) {
       const nodeId = addShapeNode(
@@ -635,13 +1019,14 @@ export function AssetLibraryPanel() {
     return includeFgLayer;
   };
 
+  const shouldIncludeTargetLayer = (targetLayer: "background" | "normal" | "foreground"): boolean => {
+    if (targetLayer === "background") return includeBgLayer;
+    if (targetLayer === "normal") return includeMidLayer;
+    return includeFgLayer;
+  };
+
   const handleCreateCreativeScene = (preset: CreativeScenePreset) => {
-    const autoLayerIds = Object.values(document.nodes)
-      .filter((node) => node.id !== document.rootNodeId && node.assetId?.startsWith("scene-layer:"))
-      .map((node) => node.id);
-    for (const nodeId of autoLayerIds) {
-      removeNodeById(nodeId);
-    }
+    clearAutoSceneNodes();
 
     for (const layer of preset.layers) {
       if (!shouldIncludeSceneLayer(layer)) continue;
@@ -663,6 +1048,100 @@ export function AssetLibraryPanel() {
     }
   };
 
+  const handleCreateLivescapeScene = (preset: LivescapeScenePreset) => {
+    clearAutoSceneNodes();
+
+    for (const layer of preset.layers) {
+      if (!shouldIncludeSceneLayer(layer)) continue;
+      const nodeId = addShapeNode(
+        layer.name,
+        {
+          shapeType: "rectangle",
+          width: Math.round(layer.wFrac * canvasWidth),
+          height: Math.round(layer.hFrac * canvasHeight),
+          fill: layer.fill,
+        },
+        { x: layer.xFrac * canvasWidth, y: layer.yFrac * canvasHeight }
+      );
+      updateNodeProps(nodeId, {
+        assetId: `scene-layer:livescape:${preset.id}:${layer.name}`,
+        layer: layer.targetLayer,
+        parallaxFactor: layer.parallaxFactor ?? getDefaultParallaxForLayer(layer.targetLayer),
+      });
+    }
+
+    const ctx: LivescapeContext = {
+      canvasWidth,
+      canvasHeight,
+      durationMs: Math.max(1000, durationMs),
+    };
+
+    for (const element of preset.dynamicElements) {
+      if (!shouldIncludeTargetLayer(element.targetLayer)) continue;
+      const nodeId = addShapeNode(
+        element.name,
+        element.shapeFactory(ctx),
+        {
+          x: element.xFrac * canvasWidth,
+          y: element.yFrac * canvasHeight,
+          opacity: element.opacity ?? 1,
+        }
+      );
+      updateNodeProps(nodeId, {
+        assetId: `scene-dynamic:livescape:${preset.id}:${element.id}`,
+        layer: element.targetLayer,
+        parallaxFactor: element.parallaxFactor ?? getDefaultParallaxForLayer(element.targetLayer),
+      });
+
+      const tracks = element.trackFactory?.(ctx);
+      if (!tracks) continue;
+
+      const properties = Object.keys(tracks) as AnimatableProperty[];
+      for (const property of properties) {
+        const keyframes = tracks[property];
+        if (!keyframes || keyframes.length === 0) continue;
+        for (const keyframe of keyframes) {
+          const at = Math.max(0, Math.min(1, keyframe.at));
+          const timeMs = Math.round(at * ctx.durationMs);
+          setKeyframeAt(nodeId, property, timeMs, keyframe.value, keyframe.easing);
+        }
+      }
+    }
+  };
+
+  const handleGenerateStoryScene = () => {
+    const trimmed = storyPrompt.trim();
+    if (!trimmed) return;
+
+    setIsGeneratingStory(true);
+    try {
+      const plan = generateStoryScenePlan(trimmed, {
+        canvasWidth,
+        canvasHeight,
+        durationMs,
+      });
+
+      clearAutoSceneNodes();
+
+      for (const layer of plan.layers) {
+        if (!shouldIncludeSceneLayer(layer)) continue;
+        applyStoryLayer(plan.id, layer);
+      }
+
+      let firstNodeId: string | null = null;
+      for (const node of plan.nodes) {
+        if (!shouldIncludeTargetLayer(node.layer)) continue;
+        const nodeId = applyStoryNode(plan.id, node);
+        if (!firstNodeId) firstNodeId = nodeId;
+      }
+
+      if (firstNodeId) selectNode(firstNodeId);
+      setStoryStatus(plan.summary);
+    } finally {
+      setIsGeneratingStory(false);
+    }
+  };
+
   return (
     <div className="h-full flex flex-col" onClick={(e) => e.stopPropagation()}>
       <div className="flex items-center justify-between px-3 py-2 border-b border-gray-800">
@@ -672,6 +1151,67 @@ export function AssetLibraryPanel() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-4">
+        {/* AI story scene prompt */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-xs font-medium text-gray-500">AI Story Prompt</h3>
+            <span className="text-[10px] text-gray-600">Prompt to Scene Action</span>
+          </div>
+          <textarea
+            value={storyPrompt}
+            onChange={(e) => setStoryPrompt(e.target.value)}
+            placeholder="Example: Two friends race through a moonlit city while stars flicker overhead."
+            className="w-full min-h-[64px] rounded-md border border-gray-700 bg-gray-900/70 px-2 py-1.5 text-xs text-gray-200 placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+          />
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={handleGenerateStoryScene}
+              disabled={isGeneratingStory || storyPrompt.trim().length === 0}
+              className="rounded-md bg-cyan-600 px-2.5 py-1.5 text-[11px] font-medium text-white hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {isGeneratingStory ? "Generating..." : "Generate Short Scene"}
+            </button>
+            <span className="text-[10px] text-gray-500">
+              Uses local AI-style generation
+            </span>
+          </div>
+          {storyStatus && (
+            <p className="mt-2 text-[10px] text-cyan-300">
+              {storyStatus}
+            </p>
+          )}
+        </div>
+
+        {/* Livescape scene creator: dynamic atmospheric presets */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-xs font-medium text-gray-500">Livescape Scenes</h3>
+            <span className="text-[10px] text-gray-600">Animated atmospheres</span>
+          </div>
+          <p className="text-[10px] text-gray-500 mb-2">
+            Adds moving clouds, birds, mist, flickering stars, and parallax train motion.
+          </p>
+          <div className="grid grid-cols-2 gap-1.5">
+            {LIVESCAPE_SCENE_PRESETS.map((preset) => (
+              <button
+                key={preset.id}
+                onClick={() => handleCreateLivescapeScene(preset)}
+                className="flex flex-col items-center gap-1 p-2 rounded-lg hover:bg-gray-800 transition-colors group"
+                title={`Create ${preset.name}`}
+              >
+                <div
+                  className="w-10 h-6 rounded-md border border-gray-700"
+                  style={{ backgroundColor: preset.preview }}
+                />
+                <span className="text-[10px] text-gray-500 group-hover:text-gray-300 truncate w-full text-center">
+                  {preset.name}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Scene creator: background/middleground/foreground composition */}
         <div>
           <div className="flex items-center justify-between mb-2">

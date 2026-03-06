@@ -41,6 +41,7 @@ import {
   normalizeComposition,
   computeCompositionDuration,
 } from "@/engine/composition";
+import { DEFAULT_PROJECT_DURATION_MS } from "@/lib/constants";
 import {
   applyPresetAnimation,
   clearNodeAnimations,
@@ -48,12 +49,28 @@ import {
   type PresetAnimationOptions,
 } from "@/engine/animation-presets";
 
-interface EditorSceneState {
+export interface EditorSceneState {
   id: string;
   name: string;
   order: number;
   document: SceneDocument;
   durationMs: number;
+}
+
+export interface EditorStateSnapshot {
+  projectId: string | null;
+  projectName: string;
+  fps: number;
+  durationMs: number;
+  canvasWidth: number;
+  canvasHeight: number;
+  version: number;
+  sceneId: string | null;
+  document: SceneDocument;
+  scenes: Record<string, EditorSceneState>;
+  sceneOrder: string[];
+  timelineComposition: TimelineComposition;
+  dirty: boolean;
 }
 
 interface EditorState {
@@ -140,6 +157,7 @@ interface EditorState {
   setProjectName: (name: string) => void;
   setVersion: (version: number) => void;
   setCanvasDimensions: (width: number, height: number) => void;
+  applyStateSnapshot: (snapshot: EditorStateSnapshot) => void;
   markClean: () => void;
 }
 
@@ -168,6 +186,24 @@ function applyDocumentToActiveScene(
     };
   }
   state.dirty = true;
+}
+
+export function createEditorStateSnapshot(state: EditorState): EditorStateSnapshot {
+  return {
+    projectId: state.projectId,
+    projectName: state.projectName,
+    fps: state.fps,
+    durationMs: state.durationMs,
+    canvasWidth: state.canvasWidth,
+    canvasHeight: state.canvasHeight,
+    version: state.version,
+    sceneId: state.sceneId,
+    document: state.document,
+    scenes: state.scenes,
+    sceneOrder: state.sceneOrder,
+    timelineComposition: state.timelineComposition,
+    dirty: state.dirty,
+  };
 }
 
 function parseTimelineData(
@@ -203,7 +239,7 @@ export const useEditorStore = create<EditorState>()(
     projectId: null,
     projectName: "Untitled",
     fps: 24,
-    durationMs: 30000,
+    durationMs: DEFAULT_PROJECT_DURATION_MS,
     canvasWidth: 1920,
     canvasHeight: 1080,
     version: 1,
@@ -632,6 +668,8 @@ export const useEditorStore = create<EditorState>()(
         state.sceneOrder.forEach((sid, i) => {
           if (state.scenes[sid]) state.scenes[sid].order = i;
         });
+        state.sceneId = newId;
+        state.document = newScene.document;
         state.dirty = true;
       });
       return newId;
@@ -693,6 +731,24 @@ export const useEditorStore = create<EditorState>()(
         state.canvasWidth = width;
         state.canvasHeight = height;
         state.dirty = true;
+      });
+    },
+
+    applyStateSnapshot: (snapshot) => {
+      set((state) => {
+        state.projectId = snapshot.projectId;
+        state.projectName = snapshot.projectName;
+        state.fps = snapshot.fps;
+        state.durationMs = snapshot.durationMs;
+        state.canvasWidth = snapshot.canvasWidth;
+        state.canvasHeight = snapshot.canvasHeight;
+        state.version = snapshot.version;
+        state.sceneId = snapshot.sceneId;
+        state.document = snapshot.document;
+        state.scenes = snapshot.scenes;
+        state.sceneOrder = snapshot.sceneOrder;
+        state.timelineComposition = snapshot.timelineComposition;
+        state.dirty = snapshot.dirty;
       });
     },
 

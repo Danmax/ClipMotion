@@ -10,6 +10,14 @@ import { getEffectiveParallaxFactor, sampleScene } from "@/engine/keyframe-engin
 import { hexToNumber, drawShapeBody, drawFace, drawLimbs, drawAccessories, drawShapePattern } from "@/lib/draw-character";
 import type { SceneNode } from "@/engine/types";
 
+const ZOOM_PRESETS = [1.2, 1, 0.8, 0.5] as const;
+const MIN_CANVAS_ZOOM = 0.5;
+const MAX_CANVAS_ZOOM = 1.2;
+
+function clampCanvasZoom(zoom: number): number {
+  return Math.max(MIN_CANVAS_ZOOM, Math.min(MAX_CANVAS_ZOOM, zoom));
+}
+
 function syncSceneViewport(app: Application, sceneContainer: Container, zoom: number) {
   // Keep scene origin centered in the current viewport after any resize.
   sceneContainer.x = app.screen.width / 2;
@@ -24,16 +32,25 @@ export function CanvasViewport() {
   const sceneContainerRef = useRef<Container | null>(null);
   const [canvasReady, setCanvasReady] = useState(false);
   const [penPoints, setPenPoints] = useState<Array<{ x: number; y: number }>>([]);
+  const [showZoomPane, setShowZoomPane] = useState(true);
   const canvasZoomRef = useRef(1);
   const activeToolRef = useRef<ToolId>("select");
   const penPointsRef = useRef<Array<{ x: number; y: number }>>([]);
   const finalizePenPathRef = useRef<() => boolean>(() => false);
   const dragStateRef = useRef<{
     nodeId: string;
+    mode: "move" | "rotate" | "scale";
     startX: number;
     startY: number;
     startNodeX: number;
     startNodeY: number;
+    centerX: number;
+    centerY: number;
+    startRotation: number;
+    startScaleX: number;
+    startScaleY: number;
+    startAngleRad: number;
+    startDistance: number;
   } | null>(null);
 
   const document = useEditorStore((s) => s.document);
@@ -208,9 +225,29 @@ export function CanvasViewport() {
         const dx = localPos.x - drag.startX;
         const dy = localPos.y - drag.startY;
 
+        if (drag.mode === "move") {
+          updateNodeTransform(drag.nodeId, {
+            x: drag.startNodeX + dx,
+            y: drag.startNodeY + dy,
+          });
+          return;
+        }
+
+        if (drag.mode === "rotate") {
+          const angleRad = Math.atan2(localPos.y - drag.centerY, localPos.x - drag.centerX);
+          const deltaDeg = ((angleRad - drag.startAngleRad) * 180) / Math.PI;
+          updateNodeTransform(drag.nodeId, {
+            rotation: drag.startRotation + deltaDeg,
+          });
+          return;
+        }
+
+        const distance = Math.hypot(localPos.x - drag.centerX, localPos.y - drag.centerY);
+        const fallbackFactor = 1 + (dx + dy) / 220;
+        const factor = drag.startDistance > 0.001 ? distance / drag.startDistance : fallbackFactor;
         updateNodeTransform(drag.nodeId, {
-          x: drag.startNodeX + dx,
-          y: drag.startNodeY + dy,
+          scaleX: Math.max(0.1, Math.min(8, drag.startScaleX * Math.max(0.1, factor))),
+          scaleY: Math.max(0.1, Math.min(8, drag.startScaleY * Math.max(0.1, factor))),
         });
       });
 
@@ -297,7 +334,16 @@ export function CanvasViewport() {
       nodeContainer.scale.set(transform.scaleX, transform.scaleY);
       nodeContainer.alpha = transform.opacity;
       nodeContainer.eventMode = "static";
-      nodeContainer.cursor = activeToolRef.current === "pen" ? "crosshair" : "pointer";
+      nodeContainer.cursor =
+        activeToolRef.current === "pen"
+          ? "crosshair"
+          : activeToolRef.current === "rotate"
+            ? "crosshair"
+            : activeToolRef.current === "scale"
+              ? "nwse-resize"
+              : activeToolRef.current === "move"
+                ? "grab"
+                : "pointer";
       nodeContainer.label = nodeId;
 
       const isSelected = selectedNodeIds.has(nodeId);
@@ -316,14 +362,27 @@ export function CanvasViewport() {
         e.stopPropagation();
         selectNode(nodeId, e.shiftKey);
 
-        // Start drag
+        // Start transform drag according to active tool.
         const localPos = sceneContainerRef.current!.toLocal(e.global);
+        const activeToolId = activeToolRef.current;
+        const mode: "move" | "rotate" | "scale" =
+          activeToolId === "rotate" ? "rotate" : activeToolId === "scale" ? "scale" : "move";
+        const startAngleRad = Math.atan2(localPos.y - transform.y, localPos.x - transform.x);
+        const startDistance = Math.hypot(localPos.x - transform.x, localPos.y - transform.y);
         dragStateRef.current = {
           nodeId,
+          mode,
           startX: localPos.x,
           startY: localPos.y,
           startNodeX: transform.x,
           startNodeY: transform.y,
+          centerX: transform.x,
+          centerY: transform.y,
+          startRotation: transform.rotation,
+          startScaleX: transform.scaleX,
+          startScaleY: transform.scaleY,
+          startAngleRad,
+          startDistance,
         };
       });
 
@@ -374,8 +433,15 @@ export function CanvasViewport() {
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
         const delta = e.deltaY > 0 ? -0.1 : 0.1;
-        setCanvasZoom(canvasZoom + delta);
+        setCanvasZoom(clampCanvasZoom(canvasZoom + delta));
       }
+    },
+    [canvasZoom, setCanvasZoom]
+  );
+
+  const handleZoomStep = useCallback(
+    (delta: number) => {
+      setCanvasZoom(clampCanvasZoom(canvasZoom + delta));
     },
     [canvasZoom, setCanvasZoom]
   );
@@ -394,9 +460,70 @@ export function CanvasViewport() {
             : "Pen: click to place points. Need at least 3 points."}
         </div>
       )}
-      <div className="absolute bottom-3 right-3 text-xs text-gray-600 bg-white/85 px-2 py-1 rounded">
-        {Math.round(canvasZoom * 100)}%
-      </div>
+      {showZoomPane ? (
+        <div className="absolute bottom-3 right-3 bg-white/90 border border-[#d5dde8] rounded-lg shadow-sm px-2 py-1.5">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => handleZoomStep(-0.1)}
+                className="w-5 h-5 rounded bg-[#eef2f7] text-gray-700 hover:bg-[#e2e8f0] transition-colors"
+                title="Zoom out"
+              >
+                -
+              </button>
+              <span className="text-xs text-gray-700 font-medium w-10 text-center">
+                {Math.round(canvasZoom * 100)}%
+              </span>
+              <button
+                type="button"
+                onClick={() => handleZoomStep(0.1)}
+                className="w-5 h-5 rounded bg-[#eef2f7] text-gray-700 hover:bg-[#e2e8f0] transition-colors"
+                title="Zoom in"
+              >
+                +
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowZoomPane(false)}
+              className="w-5 h-5 rounded bg-[#eef2f7] text-gray-600 hover:bg-[#e2e8f0] hover:text-gray-800 transition-colors"
+              title="Hide zoom panel"
+            >
+              ×
+            </button>
+          </div>
+          <div className="mt-1.5 flex items-center gap-1">
+            {ZOOM_PRESETS.map((zoom) => {
+              const active = Math.abs(canvasZoom - zoom) < 0.01;
+              return (
+                <button
+                  key={zoom}
+                  type="button"
+                  onClick={() => setCanvasZoom(zoom)}
+                  className={`px-1.5 py-0.5 rounded text-[10px] transition-colors ${
+                    active
+                      ? "bg-cyan-500 text-white"
+                      : "bg-[#eef2f7] text-gray-600 hover:bg-[#e2e8f0]"
+                  }`}
+                  title={`Set zoom to ${Math.round(zoom * 100)}%`}
+                >
+                  {Math.round(zoom * 100)}%
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setShowZoomPane(true)}
+          className="absolute bottom-3 right-3 bg-white/90 border border-[#d5dde8] rounded-lg shadow-sm px-2 py-1 text-[11px] text-gray-700 hover:bg-white transition-colors"
+          title="Show zoom panel"
+        >
+          Zoom
+        </button>
+      )}
     </div>
   );
 }

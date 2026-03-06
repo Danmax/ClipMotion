@@ -14,7 +14,7 @@ export default async function DashboardLayout({
     <div className="min-h-screen bg-gray-950">
       <header className="border-b border-gray-800 bg-gray-900/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
-          <Link href="/projects" className="text-xl font-bold text-white">
+          <Link href="/" className="text-xl font-bold text-white">
             ClipMotion
           </Link>
           <div className="flex items-center gap-4">

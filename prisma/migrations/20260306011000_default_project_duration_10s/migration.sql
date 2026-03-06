@@ -1,0 +1,2 @@
+ALTER TABLE "projects"
+ALTER COLUMN "durationMs" SET DEFAULT 10000;

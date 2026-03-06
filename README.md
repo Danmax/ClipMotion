@@ -9,9 +9,12 @@ ClipMotion is a web animation editor for creating short animated scenes with cha
 - Character builder (shape, face, limbs)
 - Timeline keyframes for transform + parallax depth
 - Expression keyframes for face changes over time
+- Canvas tools: select, move, rotate, scale, pen-shape drawing
+- Prompt-to-scene generation (AI-style local story scene planner)
 - Scene Creator presets (background/middleground/foreground)
 - Manual save + autosave with version conflict recovery
-- Export button downloads project package (`.clipmotion.json`)
+- Export to WebM/MP4 (browser support dependent) and project package (`.clipmotion.json`)
+- Export clip trim range (start/end time) before download
 
 ## Stack
 
@@ -95,6 +98,17 @@ This uses `prisma/schema.local.prisma` and creates `prisma/dev.local.db`.
 - `src/lib` - shared utilities (db, drawing, constants)
 - `prisma` - schema + migrations
 - `tests` - unit tests (engine-focused)
+
+## Editor Controls
+
+- `V`: Select tool
+- `M`: Move tool
+- `R`: Rotate tool
+- `S`: Scale tool
+- `P`: Pen tool (create custom closed shapes)
+- `Ctrl/Cmd + Z`: Undo
+- `Ctrl/Cmd + Shift + Z` (or `Ctrl/Cmd + Y`): Redo
+- `Ctrl/Cmd + S`: Save project
 
 ## Known Warnings / Troubleshooting
 

@@ -14,6 +14,7 @@ interface HistoryState {
   maxHistory: number;
 
   push: (command: Command) => void;
+  record: (command: Command) => void;
   undo: () => void;
   redo: () => void;
   canUndo: () => boolean;
@@ -33,6 +34,12 @@ export const useHistoryStore = create<HistoryState>()((set, get) => ({
       redoStack: [], // Clear redo stack on new action
     }));
   },
+
+  record: (command) =>
+    set((state) => ({
+      undoStack: [...state.undoStack.slice(-(state.maxHistory - 1)), command],
+      redoStack: [],
+    })),
 
   undo: () => {
     const { undoStack } = get();

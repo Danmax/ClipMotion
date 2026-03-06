@@ -8,6 +8,7 @@ import { useUIStore } from "@/store/ui-store";
 import { usePlayback } from "@/hooks/use-playback";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { useAutosave } from "@/hooks/use-autosave";
+import { useEditorHistory } from "@/hooks/use-editor-history";
 import { MenuBar } from "./menu-bar/menu-bar";
 import { FloatingToolbar } from "./floating-toolbar";
 import { CanvasViewport } from "./canvas/canvas-viewport";
@@ -47,6 +48,7 @@ export function EditorShell({ project, scenes }: EditorShellProps) {
 
   // Wire up editor hooks
   usePlayback();
+  useEditorHistory(project.id);
   const { save, saving } = useAutosave();
   useKeyboardShortcuts(save);
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Undo2, Redo2, Save, Download } from "lucide-react";
 import { useEditorStore } from "@/store/editor-store";
 import { useHistoryStore } from "@/store/history-store";
@@ -16,6 +16,7 @@ interface MenuBarProps {
 }
 
 type ExportFormat = "mp4" | "webm" | "gif" | "json";
+const MIN_EXPORT_RANGE_MS = 100;
 
 function getSupportedRecorderMimeType(format: Extract<ExportFormat, "mp4" | "webm">): string | null {
   const candidates =
@@ -41,8 +42,20 @@ export function MenuBar({ onSave, saving }: MenuBarProps) {
   const redo = useHistoryStore((s) => s.redo);
   const undoStack = useHistoryStore((s) => s.undoStack);
   const redoStack = useHistoryStore((s) => s.redoStack);
+  const loopRegion = usePlaybackStore((s) => s.loopRegion);
   const [exporting, setExporting] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [exportStartMs, setExportStartMs] = useState(0);
+  const [exportEndMs, setExportEndMs] = useState(durationMs);
+
+  useEffect(() => {
+    setExportStartMs((prev) =>
+      Math.max(0, Math.min(prev, Math.max(0, durationMs - MIN_EXPORT_RANGE_MS)))
+    );
+    setExportEndMs((prev) =>
+      Math.max(MIN_EXPORT_RANGE_MS, Math.min(prev, Math.max(MIN_EXPORT_RANGE_MS, durationMs)))
+    );
+  }, [durationMs]);
 
   const handleManualSave = async () => {
     await onSave();
@@ -50,6 +63,10 @@ export function MenuBar({ onSave, saving }: MenuBarProps) {
 
   const handleExport = async (format: ExportFormat) => {
     if (exporting) return;
+    const maxRangeMs = Math.max(MIN_EXPORT_RANGE_MS, durationMs);
+    const startMs = Math.max(0, Math.min(exportStartMs, maxRangeMs - MIN_EXPORT_RANGE_MS));
+    const endMs = Math.max(startMs + MIN_EXPORT_RANGE_MS, Math.min(exportEndMs, maxRangeMs));
+    const exportDurationMs = endMs - startMs;
     setShowExportMenu(false);
     setExporting(true);
     try {
@@ -97,12 +114,12 @@ export function MenuBar({ onSave, saving }: MenuBarProps) {
         });
 
         playback.pause();
-        playback.setCurrentTime(0);
+        playback.setCurrentTime(startMs);
         recorder.start(200);
         playback.play();
 
         await new Promise((resolve) => {
-          window.setTimeout(resolve, Math.max(500, durationMs));
+          window.setTimeout(resolve, Math.max(500, exportDurationMs));
         });
 
         playback.pause();
@@ -139,6 +156,10 @@ export function MenuBar({ onSave, saving }: MenuBarProps) {
           height: state.canvasHeight,
           version: state.version,
           timelineData: state.timelineComposition,
+          exportRangeMs: {
+            startMs,
+            endMs,
+          },
         },
         scenes: state.sceneOrder
           .map((sceneId) => state.scenes[sceneId])
@@ -226,7 +247,78 @@ export function MenuBar({ onSave, saving }: MenuBarProps) {
         </button>
 
         {showExportMenu && !exporting && (
-          <div className="absolute right-0 mt-2 w-40 rounded-lg border border-[#d9e0e8] bg-white shadow-lg overflow-hidden z-20">
+          <div className="absolute right-0 mt-2 w-56 rounded-lg border border-[#d9e0e8] bg-white shadow-lg overflow-hidden z-20">
+            <div className="px-3 py-2 border-b border-[#eef2f7] space-y-2">
+              <div className="text-[11px] font-semibold text-slate-600 uppercase tracking-wide">
+                Clip Trim
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="text-[11px] text-slate-600">
+                  Start (s)
+                  <input
+                    type="number"
+                    min={0}
+                    max={Math.max(0, durationMs / 1000)}
+                    step={0.1}
+                    value={(exportStartMs / 1000).toFixed(1)}
+                    onChange={(event) => {
+                      const value = Number(event.target.value);
+                      if (!Number.isFinite(value)) return;
+                      const nextStartMs = Math.max(0, Math.round(value * 1000));
+                      setExportStartMs(nextStartMs);
+                      setExportEndMs((prev) =>
+                        Math.max(nextStartMs + MIN_EXPORT_RANGE_MS, prev)
+                      );
+                    }}
+                    className="mt-1 w-full rounded border border-[#d9e0e8] px-2 py-1 text-xs text-slate-700"
+                  />
+                </label>
+                <label className="text-[11px] text-slate-600">
+                  End (s)
+                  <input
+                    type="number"
+                    min={0}
+                    max={Math.max(0, durationMs / 1000)}
+                    step={0.1}
+                    value={(exportEndMs / 1000).toFixed(1)}
+                    onChange={(event) => {
+                      const value = Number(event.target.value);
+                      if (!Number.isFinite(value)) return;
+                      const nextEndMs = Math.max(0, Math.round(value * 1000));
+                      setExportEndMs(nextEndMs);
+                      setExportStartMs((prev) =>
+                        Math.min(prev, Math.max(0, nextEndMs - MIN_EXPORT_RANGE_MS))
+                      );
+                    }}
+                    className="mt-1 w-full rounded border border-[#d9e0e8] px-2 py-1 text-xs text-slate-700"
+                  />
+                </label>
+              </div>
+              <div className="flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setExportStartMs(0);
+                    setExportEndMs(durationMs);
+                  }}
+                  className="text-[11px] text-blue-600 hover:text-blue-700"
+                >
+                  Full clip
+                </button>
+                {loopRegion && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setExportStartMs(loopRegion.startMs);
+                      setExportEndMs(loopRegion.endMs);
+                    }}
+                    className="text-[11px] text-blue-600 hover:text-blue-700"
+                  >
+                    Use loop
+                  </button>
+                )}
+              </div>
+            </div>
             <button
               onClick={() => handleExport("mp4")}
               className="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-[#f4f7fb] transition-colors"

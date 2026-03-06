@@ -73,7 +73,7 @@ model Project {
   name         String
   description  String?
   fps          Int      @default(24)
-  durationMs   Int      @default(30000)
+  durationMs   Int      @default(10000)
   width        Int      @default(1920)
   height       Int      @default(1080)
   thumbnail    String?

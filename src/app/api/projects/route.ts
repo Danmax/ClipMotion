@@ -3,13 +3,13 @@ import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { DEFAULT_FPS, DEFAULT_CANVAS_WIDTH, DEFAULT_CANVAS_HEIGHT, FREE_TIER_MAX_DURATION_MS } from "@/lib/constants";
+import { DEFAULT_FPS, DEFAULT_CANVAS_WIDTH, DEFAULT_CANVAS_HEIGHT, DEFAULT_PROJECT_DURATION_MS } from "@/lib/constants";
 import { createEmptyScene } from "@/engine/serialization";
 import { createSingleClipComposition } from "@/engine/composition";
 
 const createProjectSchema = z.object({
   name: z.string().min(1).max(200),
-  fps: z.number().int().refine((v) => [12, 16, 24, 30, 60].includes(v)),
+  fps: z.number().int().refine((v) => [12, 16, 24, 30, 60].includes(v)).optional(),
   width: z.number().int().min(320).max(3840).optional(),
   height: z.number().int().min(240).max(2160).optional(),
 });
@@ -67,7 +67,7 @@ export async function POST(req: Request) {
         fps: fps ?? DEFAULT_FPS,
         width: width ?? DEFAULT_CANVAS_WIDTH,
         height: height ?? DEFAULT_CANVAS_HEIGHT,
-        durationMs: FREE_TIER_MAX_DURATION_MS,
+        durationMs: DEFAULT_PROJECT_DURATION_MS,
         scenes: {
           create: {
             name: "Scene 1",

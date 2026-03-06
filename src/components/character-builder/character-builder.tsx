@@ -58,6 +58,13 @@ const PRESET_COLORS = [
   "#ccff00", "#00cc33", "#ff69b4", "#87ceeb",
 ];
 
+const ACCESSORY_COLORS = [
+  "#ff4d6d", "#ff7b00", "#ffbe0b", "#ffd166", "#06d6a0", "#00f5d4",
+  "#48bfe3", "#4cc9f0", "#5e60ce", "#7b2cbf", "#9d4edd", "#f15bb5",
+  "#ef476f", "#f9844a", "#90be6d", "#43aa8b", "#577590", "#3a86ff",
+  "#fb5607", "#ff006e", "#8338ec", "#00bbf9", "#00b894", "#ff9f1c",
+];
+
 const PATTERN_OPTIONS: { value: ShapePattern; label: string }[] = [
   { value: "none", label: "None" },
   { value: "stripes", label: "Stripes" },
@@ -176,6 +183,36 @@ function pick<T>(arr: readonly T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
+function pickDifferentColor(source: readonly string[], current: string): string {
+  const candidates = source.filter((color) => color !== current);
+  return candidates.length > 0 ? pick(candidates) : current;
+}
+
+function getAccessoryColors(type: AccessoryProps["type"]): Pick<AccessoryProps, "color" | "accentColor" | "detailColor"> {
+  const primary = pick(ACCESSORY_COLORS);
+  const accent = pickDifferentColor(ACCESSORY_COLORS, primary);
+  const detailBase = type === "glasses" ? "#1f2937" : pickDifferentColor(ACCESSORY_COLORS, accent);
+  return {
+    color: primary,
+    accentColor: accent,
+    detailColor: detailBase,
+  };
+}
+
+function getAccessoryDefaults(type: AccessoryProps["type"]): Omit<AccessoryProps, "id" | "type" | "name"> {
+  const palette = getAccessoryColors(type);
+  if (type === "hat") {
+    return { x: 0, y: -34, scale: 1, rotation: 0, ...palette };
+  }
+  if (type === "glasses") {
+    return { x: 0, y: -8, scale: 1, rotation: 0, ...palette };
+  }
+  if (type === "prop") {
+    return { x: 34, y: 14, scale: 1, rotation: -12, ...palette };
+  }
+  return { x: 0, y: 0, scale: 1, rotation: 0, ...palette };
+}
+
 function randRange(min: number, max: number, step = 1): number {
   const steps = Math.round((max - min) / step);
   return min + Math.round(Math.random() * steps) * step;
@@ -268,11 +305,7 @@ function generateRandomCharacter() {
       id: `acc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       type: "hat",
       name: "Hat",
-      x: 0,
-      y: -34,
-      scale: 1,
-      rotation: 0,
-      color: "#222222",
+      ...getAccessoryDefaults("hat"),
     });
   }
 
@@ -435,12 +468,6 @@ export function CharacterBuilder({
 
   const addAccessory = useCallback((type: AccessoryProps["type"]) => {
     const id = `acc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-    const defaults: Record<AccessoryProps["type"], Omit<AccessoryProps, "id" | "type" | "name">> = {
-      hat: { x: 0, y: -34, scale: 1, rotation: 0, color: "#222222" },
-      glasses: { x: 0, y: -8, scale: 1, rotation: 0, color: "#111111" },
-      prop: { x: 34, y: 14, scale: 1, rotation: -12, color: "#8b5e34" },
-      other: { x: 0, y: 0, scale: 1, rotation: 0, color: "#666666" },
-    };
     const labels: Record<AccessoryProps["type"], string> = {
       hat: "Hat",
       glasses: "Glasses",
@@ -451,7 +478,7 @@ export function CharacterBuilder({
       id,
       type,
       name: labels[type],
-      ...defaults[type],
+      ...getAccessoryDefaults(type),
     };
     setAccessories((prev) => [...prev, next]);
     setSelectedAccessoryId(id);
@@ -1260,16 +1287,25 @@ export function CharacterBuilder({
                           max={180}
                           onChange={(v) => updateAccessory(selectedAccessory.id, { rotation: v })}
                         />
-                        <div className="flex items-center gap-3">
-                          <span className="text-xs text-gray-400 w-16">Color</span>
-                          <input
-                            type="color"
-                            value={selectedAccessory.color ?? "#444444"}
-                            onChange={(e) => updateAccessory(selectedAccessory.id, { color: e.target.value })}
-                            className="w-8 h-8 rounded cursor-pointer bg-transparent border border-gray-700"
-                          />
-                        </div>
                       </div>
+                      <ColorSwatchField
+                        label="Primary"
+                        value={selectedAccessory.color ?? "#5e5ce6"}
+                        palette={ACCESSORY_COLORS}
+                        onChange={(color) => updateAccessory(selectedAccessory.id, { color })}
+                      />
+                      <ColorSwatchField
+                        label="Accent"
+                        value={selectedAccessory.accentColor ?? "#ffd166"}
+                        palette={ACCESSORY_COLORS}
+                        onChange={(accentColor) => updateAccessory(selectedAccessory.id, { accentColor })}
+                      />
+                      <ColorSwatchField
+                        label="Detail"
+                        value={selectedAccessory.detailColor ?? "#1f2937"}
+                        palette={ACCESSORY_COLORS}
+                        onChange={(detailColor) => updateAccessory(selectedAccessory.id, { detailColor })}
+                      />
                     </div>
                   )}
                 </>
@@ -1341,6 +1377,46 @@ function SliderField({
         onChange={(e) => onChange(parseFloat(e.target.value))}
         className="w-full accent-blue-500"
       />
+    </div>
+  );
+}
+
+function ColorSwatchField({
+  label,
+  value,
+  palette,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  palette: readonly string[];
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-3">
+        <span className="text-xs text-gray-400 w-16">{label}</span>
+        <input
+          type="color"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-8 h-8 rounded cursor-pointer bg-transparent border border-gray-700"
+        />
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {palette.map((color) => (
+          <button
+            key={`${label}-${color}`}
+            type="button"
+            onClick={() => onChange(color)}
+            className={`h-5 w-5 rounded border transition-transform ${
+              value === color ? "border-white scale-110" : "border-gray-700 hover:border-gray-400"
+            }`}
+            style={{ backgroundColor: color }}
+            title={color}
+          />
+        ))}
+      </div>
     </div>
   );
 }

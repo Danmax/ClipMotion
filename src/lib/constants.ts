@@ -1,5 +1,6 @@
 // Free tier limits
 export const FREE_TIER_MAX_DURATION_MS = 30_000; // 30 seconds
+export const DEFAULT_PROJECT_DURATION_MS = 10_000; // 10 seconds
 export const FREE_TIER_MAX_EXPORTS_PER_DAY = 3;
 export const FREE_TIER_MAX_RESOLUTION = "1280x720";
 export const FREE_TIER_WATERMARK = true;

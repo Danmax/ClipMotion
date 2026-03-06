@@ -219,6 +219,8 @@ const accessoryPropsSchema = z.object({
   scale: z.number(),
   rotation: z.number(),
   color: z.string().optional(),
+  accentColor: z.string().optional(),
+  detailColor: z.string().optional(),
 });
 
 const sceneNodeSchema = z.object({

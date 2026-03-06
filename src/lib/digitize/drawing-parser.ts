@@ -351,7 +351,9 @@ function inferAccessories(fileName: string, svgText?: string): { items: Accessor
       y: -34,
       scale: 1,
       rotation: 0,
-      color: "#222222",
+      color: "#5e60ce",
+      accentColor: "#ffd166",
+      detailColor: "#2d3142",
     });
   }
   if (lower.includes("glass")) {
@@ -363,7 +365,9 @@ function inferAccessories(fileName: string, svgText?: string): { items: Accessor
       y: -8,
       scale: 1,
       rotation: 0,
-      color: "#111111",
+      color: "#4cc9f0",
+      accentColor: "#ffffff",
+      detailColor: "#1f2937",
     });
   }
   if (lower.includes("sword") || lower.includes("staff") || lower.includes("prop")) {
@@ -375,7 +379,9 @@ function inferAccessories(fileName: string, svgText?: string): { items: Accessor
       y: 14,
       scale: 1,
       rotation: -12,
-      color: "#875f32",
+      color: "#ef476f",
+      accentColor: "#ffd166",
+      detailColor: "#6b3f2a",
     });
   }
 

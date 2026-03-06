@@ -57,7 +57,7 @@ export function ProjectMenu() {
   return (
     <div className="flex items-center gap-2">
       <Link
-        href="/projects"
+        href="/"
         className="text-sm font-bold text-cyan-600 hover:text-cyan-700 mr-1"
       >
         ClipMotion

@@ -1459,7 +1459,10 @@ export function drawAccessories(
 
   for (const acc of accessories) {
     const g = new Graphics();
-    const color = hexToNumber(acc.color ?? "#222222", 0x222222);
+    const primary = hexToNumber(acc.color ?? "#5e5ce6", 0x5e5ce6);
+    const accent = hexToNumber(acc.accentColor ?? "", blendColor(primary, 0xffffff, 0.32));
+    const detail = hexToNumber(acc.detailColor ?? "", blendColor(primary, 0x000000, 0.32));
+    const shine = blendColor(accent, 0xffffff, 0.35);
     const x = (acc.x / 100) * shapeW;
     const y = (acc.y / 100) * shapeH;
     const scale = Math.max(0.1, acc.scale || 1);
@@ -1468,26 +1471,53 @@ export function drawAccessories(
     g.scale.set(scale);
 
     if (acc.type === "hat") {
-      g.roundRect(-26, -10, 52, 12, 4);
-      g.fill({ color });
-      g.roundRect(-16, -30, 32, 20, 5);
-      g.fill({ color });
+      g.roundRect(-30, -10, 60, 12, 5);
+      g.fill({ color: primary });
+      g.stroke({ width: 1.3, color: detail, alpha: 0.45 });
+      g.roundRect(-18, -34, 36, 24, 7);
+      g.fill({ color: accent });
+      g.stroke({ width: 1.3, color: detail, alpha: 0.45 });
+      g.roundRect(-18, -18, 36, 6, 3);
+      g.fill({ color: detail, alpha: 0.92 });
+      g.circle(10, -22, 3);
+      g.fill({ color: shine, alpha: 0.95 });
     } else if (acc.type === "glasses") {
       g.roundRect(-23, -8, 18, 14, 4);
-      g.stroke({ width: 2, color });
+      g.fill({ color: accent, alpha: 0.22 });
+      g.stroke({ width: 2.3, color: primary, alpha: 0.95 });
       g.roundRect(5, -8, 18, 14, 4);
-      g.stroke({ width: 2, color });
+      g.fill({ color: accent, alpha: 0.22 });
+      g.stroke({ width: 2.3, color: primary, alpha: 0.95 });
       g.moveTo(-5, -1);
       g.lineTo(5, -1);
-      g.stroke({ width: 2, color });
+      g.stroke({ width: 2, color: detail, alpha: 0.95 });
+      g.moveTo(-21, -8);
+      g.lineTo(21, -8);
+      g.stroke({ width: 1.8, color: primary, alpha: 0.7 });
+      g.moveTo(-19, -4);
+      g.lineTo(-11, -7);
+      g.moveTo(11, -4);
+      g.lineTo(19, -7);
+      g.stroke({ width: 1.2, color: shine, alpha: 0.85 });
     } else if (acc.type === "prop") {
       g.roundRect(-4, -24, 8, 48, 3);
-      g.fill({ color });
+      g.fill({ color: detail });
+      g.stroke({ width: 1.2, color: primary, alpha: 0.45 });
+      g.roundRect(-2.4, -16, 4.8, 22, 2);
+      g.fill({ color: accent, alpha: 0.42 });
       g.circle(0, -28, 6);
-      g.fill({ color });
+      g.fill({ color: primary });
+      g.stroke({ width: 1.2, color: detail, alpha: 0.4 });
+      g.circle(0, -28, 3);
+      g.fill({ color: shine, alpha: 0.95 });
     } else {
-      g.roundRect(-14, -14, 28, 28, 4);
-      g.stroke({ width: 2, color });
+      g.roundRect(-14, -14, 28, 28, 7);
+      g.fill({ color: accent, alpha: 0.95 });
+      g.stroke({ width: 2, color: detail, alpha: 0.7 });
+      g.circle(0, 0, 7);
+      g.fill({ color: primary, alpha: 0.98 });
+      g.circle(3, -3, 2.1);
+      g.fill({ color: shine, alpha: 0.95 });
     }
 
     container.addChild(g);

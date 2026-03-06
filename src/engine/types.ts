@@ -254,6 +254,8 @@ export interface AccessoryProps {
   scale: number;
   rotation: number;
   color?: string;
+  accentColor?: string;
+  detailColor?: string;
 }
 
 export const DEFAULT_LIMBS: LimbProps = {
