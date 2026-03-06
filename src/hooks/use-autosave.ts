@@ -16,7 +16,8 @@ export function useAutosave() {
 
   const projectId = useEditorStore((s) => s.projectId);
   const sceneId = useEditorStore((s) => s.sceneId);
-  const document = useEditorStore((s) => s.document);
+  const scenes = useEditorStore((s) => s.scenes);
+  const sceneOrder = useEditorStore((s) => s.sceneOrder);
   const dirty = useEditorStore((s) => s.dirty);
   const version = useEditorStore((s) => s.version);
   const fps = useEditorStore((s) => s.fps);
@@ -32,17 +33,40 @@ export function useAutosave() {
     savingRef.current = true;
     setSaving(true);
     try {
-      const data = serializeScene(document);
+      const serializedScenes = sceneOrder
+        .map((id, index) => {
+          const scene = scenes[id];
+          if (!scene) return null;
+          return {
+            id: scene.id,
+            name: scene.name,
+            order: index,
+            durationMs: scene.durationMs,
+            data: serializeScene(scene.document),
+          };
+        })
+        .filter((scene): scene is NonNullable<typeof scene> => scene !== null);
 
-      // Save scene data
+      if (serializedScenes.length === 0) return false;
+
+      // Save all scenes (create/update/delete/reorder) first.
       const sceneRes = await fetch(
         `/api/projects/${projectId}/scenes`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sceneId, data }),
+          body: JSON.stringify({
+            activeSceneId: sceneId,
+            scenes: serializedScenes,
+          }),
         }
       );
+
+      if (!sceneRes.ok) {
+        const details = await sceneRes.text().catch(() => "");
+        console.error("Autosave scenes PATCH failed:", sceneRes.status, details);
+        return false;
+      }
 
       const patchProject = async (v: number) =>
         fetch(`/api/projects/${projectId}`, {
@@ -85,7 +109,7 @@ export function useAutosave() {
         }
       }
 
-      if (sceneRes.ok && projectRes.ok) {
+      if (projectRes.ok) {
         const updatedProject = await projectRes.json();
         if (updatedProject.version) {
           setVersion(updatedProject.version);
@@ -93,6 +117,9 @@ export function useAutosave() {
         markClean();
         return true;
       }
+
+      const projectDetails = await projectRes.text().catch(() => "");
+      console.error("Autosave project PATCH failed:", projectRes.status, projectDetails);
       return false;
     } catch (error) {
       console.error("Autosave failed:", error);
@@ -105,7 +132,8 @@ export function useAutosave() {
     projectId,
     sceneId,
     dirty,
-    document,
+    scenes,
+    sceneOrder,
     fps,
     projectName,
     timelineComposition,

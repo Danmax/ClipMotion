@@ -127,14 +127,17 @@ model Asset {
 }
 
 model Character {
-  id        String   @id @default(cuid())
-  userId    String
-  name      String
-  shapeData String
-  faceData  String
-  limbsData String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id               String   @id @default(cuid())
+  userId           String
+  name             String
+  shapeData        String
+  faceData         String
+  limbsData        String?
+  sourceImageUrl   String?
+  accessoriesData  String?
+  digitizationMeta String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

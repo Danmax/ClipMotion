@@ -7,6 +7,7 @@ import {
   Triangle,
   Star,
   Hexagon,
+  Diamond,
   Type,
   FolderOpen,
   PersonStanding,
@@ -14,7 +15,7 @@ import {
 } from "lucide-react";
 import { useEditorStore } from "@/store/editor-store";
 import { useSelectionStore } from "@/store/selection-store";
-import type { ShapeProps, TextProps, FaceProps, LimbProps } from "@/engine/types";
+import type { ShapeProps, TextProps, FaceProps, LimbProps, AccessoryProps } from "@/engine/types";
 import { DEFAULT_LIMBS } from "@/engine/types";
 import { applyPreset } from "@/engine/face-presets";
 import Link from "next/link";
@@ -82,6 +83,54 @@ const BUILTIN_SHAPES: BuiltinAsset[] = [
     },
   },
   {
+    id: "capsule",
+    name: "Capsule",
+    icon: Circle,
+    category: "shape",
+    shape: {
+      shapeType: "capsule",
+      width: 170,
+      height: 110,
+      fill: "#7f8cff",
+    },
+  },
+  {
+    id: "diamond-shape",
+    name: "Diamond",
+    icon: Diamond,
+    category: "shape",
+    shape: {
+      shapeType: "diamond",
+      width: 130,
+      height: 150,
+      fill: "#ff5f9e",
+    },
+  },
+  {
+    id: "trapezoid",
+    name: "Trapezoid",
+    icon: Square,
+    category: "shape",
+    shape: {
+      shapeType: "trapezoid",
+      width: 160,
+      height: 120,
+      fill: "#f2a541",
+    },
+  },
+  {
+    id: "parallelogram",
+    name: "Parallelogram",
+    icon: Square,
+    category: "shape",
+    shape: {
+      shapeType: "parallelogram",
+      width: 160,
+      height: 120,
+      fill: "#2ec4b6",
+    },
+  },
+  {
     id: "star",
     name: "Star",
     icon: Star,
@@ -117,6 +166,30 @@ const BUILTIN_SHAPES: BuiltinAsset[] = [
       width: 100,
       height: 160,
       fill: "#ffffff",
+    },
+  },
+  {
+    id: "blob",
+    name: "Blob",
+    icon: Circle,
+    category: "shape",
+    shape: {
+      shapeType: "blob",
+      width: 150,
+      height: 130,
+      fill: "#9c6ade",
+    },
+  },
+  {
+    id: "asymmetric-blob",
+    name: "Asym Blob",
+    icon: Circle,
+    category: "shape",
+    shape: {
+      shapeType: "asymmetric-blob",
+      width: 150,
+      height: 130,
+      fill: "#ff8c42",
     },
   },
 ];
@@ -352,6 +425,66 @@ const CREATIVE_SCENE_PRESETS: CreativeScenePreset[] = [
       { name: "Control Deck", fill: "#1c2541", targetLayer: "foreground", parallaxFactor: 1.3, wFrac: 1, hFrac: 0.2, xFrac: 0, yFrac: 0.4 },
     ],
   },
+  {
+    id: "road-runner-desert-canyons",
+    name: "Road Runner Desert Canyons",
+    preview: "#d9822b",
+    layers: [
+      { name: "Desert Sky", fill: "#ffd8a8", targetLayer: "background", wFrac: 1, hFrac: 1, xFrac: 0, yFrac: 0 },
+      { name: "Far Canyons", fill: "#c96a2a", targetLayer: "normal", parallaxFactor: 0.55, wFrac: 1, hFrac: 0.3, xFrac: 0, yFrac: 0.26 },
+      { name: "Rocky Foreground", fill: "#8f3f1f", targetLayer: "foreground", parallaxFactor: 1.3, wFrac: 1, hFrac: 0.2, xFrac: 0, yFrac: 0.4 },
+    ],
+  },
+  {
+    id: "tropical-paradise",
+    name: "Tropical Paradise",
+    preview: "#2ec4b6",
+    layers: [
+      { name: "Island Sky", fill: "#9be7ff", targetLayer: "background", wFrac: 1, hFrac: 1, xFrac: 0, yFrac: 0 },
+      { name: "Palm Ridge", fill: "#2f855a", targetLayer: "normal", parallaxFactor: 0.65, wFrac: 1, hFrac: 0.28, xFrac: 0, yFrac: 0.28 },
+      { name: "Beach Foreground", fill: "#f4d06f", targetLayer: "foreground", parallaxFactor: 1.2, wFrac: 1, hFrac: 0.18, xFrac: 0, yFrac: 0.41 },
+    ],
+  },
+  {
+    id: "deep-forest",
+    name: "Deep Forest",
+    preview: "#2b4f2f",
+    layers: [
+      { name: "Forest Mist", fill: "#8fb996", targetLayer: "background", wFrac: 1, hFrac: 1, xFrac: 0, yFrac: 0 },
+      { name: "Dense Trees", fill: "#355e3b", targetLayer: "normal", parallaxFactor: 0.7, wFrac: 1, hFrac: 0.36, xFrac: 0, yFrac: 0.25 },
+      { name: "Ferns Foreground", fill: "#1f3f25", targetLayer: "foreground", parallaxFactor: 1.35, wFrac: 1, hFrac: 0.2, xFrac: 0, yFrac: 0.4 },
+    ],
+  },
+  {
+    id: "industrial-factory",
+    name: "Industrial Factory",
+    preview: "#495057",
+    layers: [
+      { name: "Smoky Backdrop", fill: "#6c757d", targetLayer: "background", wFrac: 1, hFrac: 1, xFrac: 0, yFrac: 0 },
+      { name: "Factory Midline", fill: "#495057", targetLayer: "normal", parallaxFactor: 0.65, wFrac: 1, hFrac: 0.32, xFrac: 0, yFrac: 0.27 },
+      { name: "Steel Floor", fill: "#343a40", targetLayer: "foreground", parallaxFactor: 1.25, wFrac: 1, hFrac: 0.2, xFrac: 0, yFrac: 0.4 },
+    ],
+  },
+  {
+    id: "fancy-palace",
+    name: "Fancy Palace",
+    preview: "#d4af37",
+    layers: [
+      { name: "Royal Hall Backdrop", fill: "#f6e7b8", targetLayer: "background", wFrac: 1, hFrac: 1, xFrac: 0, yFrac: 0 },
+      { name: "Columns & Drapes", fill: "#c9a227", targetLayer: "normal", parallaxFactor: 0.6, wFrac: 1, hFrac: 0.32, xFrac: 0, yFrac: 0.27 },
+      { name: "Marble Stage", fill: "#9c7c1f", targetLayer: "foreground", parallaxFactor: 1.25, wFrac: 1, hFrac: 0.18, xFrac: 0, yFrac: 0.41 },
+    ],
+  },
+  {
+    id: "moonlight",
+    name: "Moonlight",
+    preview: "#334e68",
+    layers: [
+      { name: "Night Sky", fill: "#1d3557", targetLayer: "background", wFrac: 1, hFrac: 1, xFrac: 0, yFrac: 0 },
+      { name: "Moonlit Hills", fill: "#457b9d", targetLayer: "normal", parallaxFactor: 0.6, wFrac: 1, hFrac: 0.3, xFrac: 0, yFrac: 0.28 },
+      { name: "Dark Silhouette Foreground", fill: "#0b2545", targetLayer: "foreground", parallaxFactor: 1.3, wFrac: 1, hFrac: 0.2, xFrac: 0, yFrac: 0.4 },
+    ],
+  },
 ];
 
 interface UserCharacter {
@@ -360,6 +493,7 @@ interface UserCharacter {
   shapeData: string;
   faceData: string;
   limbsData?: string;
+  accessoriesData?: string;
 }
 
 function getDefaultParallaxForLayer(layer: "background" | "normal" | "foreground"): number {
@@ -411,7 +545,7 @@ export function AssetLibraryPanel() {
 
     if (asset.category === "shape" && asset.shape) {
       if (asset.face && asset.limbs) {
-        nodeId = addCharacterNode(asset.name, asset.shape, asset.face, asset.limbs, pos);
+        nodeId = addCharacterNode(asset.name, asset.shape, asset.face, asset.limbs, undefined, pos);
       } else if (asset.face) {
         nodeId = addShapeNodeWithFace(asset.name, asset.shape, asset.face, pos);
       } else {
@@ -423,11 +557,13 @@ export function AssetLibraryPanel() {
       return;
     }
 
+    updateNodeProps(nodeId, { layer: "foreground" });
     selectNode(nodeId);
   };
 
   const handleAddContainer = () => {
     const id = addContainerNode("Group");
+    updateNodeProps(id, { layer: "foreground" });
     selectNode(id);
   };
 
@@ -435,11 +571,31 @@ export function AssetLibraryPanel() {
     try {
       const shape = JSON.parse(char.shapeData) as ShapeProps;
       const face = JSON.parse(char.faceData) as FaceProps;
-      const limbs = char.limbsData ? JSON.parse(char.limbsData) as LimbProps : undefined;
+      const limbs = char.limbsData
+        ? (() => {
+            const parsed = JSON.parse(char.limbsData) as Omit<Partial<LimbProps>, "handStyle"> & {
+              handStyle?: unknown;
+            };
+            const rawHandStyle = typeof parsed.handStyle === "string" ? parsed.handStyle : undefined;
+            const handStyle =
+              rawHandStyle === "yes"
+                ? "thumbs-up"
+                : rawHandStyle === "no"
+                  ? "thumbs-down"
+                  : rawHandStyle;
+            return {
+              ...DEFAULT_LIMBS,
+              ...parsed,
+              handStyle: (handStyle as LimbProps["handStyle"]) ?? DEFAULT_LIMBS.handStyle,
+            } satisfies LimbProps;
+          })()
+        : undefined;
+      const accessories = char.accessoriesData ? JSON.parse(char.accessoriesData) as AccessoryProps[] : undefined;
       const pos = nextSpawnPos();
       const nodeId = limbs
-        ? addCharacterNode(char.name, shape, face, limbs, pos)
+        ? addCharacterNode(char.name, shape, face, limbs, accessories, pos)
         : addShapeNodeWithFace(char.name, shape, face, pos);
+      updateNodeProps(nodeId, { layer: "foreground" });
       selectNode(nodeId);
     } catch {
       // ignore parse errors

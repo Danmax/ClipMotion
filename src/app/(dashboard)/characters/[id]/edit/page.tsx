@@ -2,7 +2,8 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { notFound, redirect } from "next/navigation";
 import { CharacterBuilder } from "@/components/character-builder/character-builder";
-import type { FaceProps, ShapeProps, LimbProps } from "@/engine/types";
+import { DEFAULT_LIMBS } from "@/engine/types";
+import type { FaceProps, ShapeProps, LimbProps, AccessoryProps } from "@/engine/types";
 import { applyPreset } from "@/engine/face-presets";
 
 interface EditCharacterPageProps {
@@ -27,6 +28,27 @@ export default async function EditCharacterPage({ params }: EditCharacterPagePro
   };
   let initialFace: FaceProps = applyPreset("happy");
   let initialLimbs: LimbProps | undefined;
+  let initialAccessories: AccessoryProps[] | undefined;
+  let initialDigitizationMeta:
+    | {
+        confidence?: number;
+        warnings?: string[];
+        modelVersion?: string;
+        partConfidence?: {
+          body?: number;
+          arms?: number;
+          legs?: number;
+          face?: number;
+          accessories?: number;
+        };
+        image?: {
+          format?: string;
+          width?: number;
+          height?: number;
+          aspectRatio?: number;
+        };
+      }
+    | null = null;
 
   try {
     initialShape = JSON.parse(character.shapeData) as ShapeProps;
@@ -40,9 +62,54 @@ export default async function EditCharacterPage({ params }: EditCharacterPagePro
   }
   if (character.limbsData) {
     try {
-      initialLimbs = JSON.parse(character.limbsData) as LimbProps;
+      const parsed = JSON.parse(character.limbsData) as Omit<Partial<LimbProps>, "handStyle"> & {
+        handStyle?: unknown;
+      };
+      const rawHandStyle = typeof parsed.handStyle === "string" ? parsed.handStyle : undefined;
+      const handStyle =
+        rawHandStyle === "yes"
+          ? "thumbs-up"
+          : rawHandStyle === "no"
+            ? "thumbs-down"
+            : rawHandStyle;
+      initialLimbs = {
+        ...DEFAULT_LIMBS,
+        ...parsed,
+        handStyle: (handStyle as LimbProps["handStyle"]) ?? DEFAULT_LIMBS.handStyle,
+      };
     } catch {
       // ignore
+    }
+  }
+  if (character.accessoriesData) {
+    try {
+      initialAccessories = JSON.parse(character.accessoriesData) as AccessoryProps[];
+    } catch {
+      initialAccessories = undefined;
+    }
+  }
+  if (character.digitizationMeta) {
+    try {
+      initialDigitizationMeta = JSON.parse(character.digitizationMeta) as {
+        confidence?: number;
+        warnings?: string[];
+        modelVersion?: string;
+        partConfidence?: {
+          body?: number;
+          arms?: number;
+          legs?: number;
+          face?: number;
+          accessories?: number;
+        };
+        image?: {
+          format?: string;
+          width?: number;
+          height?: number;
+          aspectRatio?: number;
+        };
+      };
+    } catch {
+      initialDigitizationMeta = null;
     }
   }
 
@@ -53,6 +120,8 @@ export default async function EditCharacterPage({ params }: EditCharacterPagePro
       initialShape={initialShape}
       initialFace={initialFace}
       initialLimbs={initialLimbs}
+      initialAccessories={initialAccessories}
+      initialDigitizationMeta={initialDigitizationMeta}
     />
   );
 }

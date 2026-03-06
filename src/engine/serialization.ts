@@ -35,14 +35,32 @@ const transformSchema = z.object({
 });
 
 const shapePropsSchema = z.object({
-  shapeType: z.enum(["rectangle", "ellipse", "triangle", "star", "polygon", "stickfigure"]),
+  shapeType: z.enum([
+    "rectangle",
+    "ellipse",
+    "triangle",
+    "star",
+    "polygon",
+    "custom-path",
+    "capsule",
+    "diamond",
+    "trapezoid",
+    "parallelogram",
+    "blob",
+    "asymmetric-blob",
+    "stickfigure",
+  ]),
   width: z.number(),
   height: z.number(),
   fill: z.string(),
   stroke: z.string().optional(),
   strokeWidth: z.number().optional(),
   cornerRadius: z.number().optional(),
+  pattern: z.enum(["none", "stripes", "dots", "checker", "crosshatch", "zigzag"]).optional(),
+  patternColor: z.string().optional(),
+  patternScale: z.number().optional(),
   points: z.number().optional(),
+  customPath: z.array(z.object({ x: z.number(), y: z.number() })).optional(),
 });
 
 const textPropsSchema = z.object({
@@ -80,13 +98,53 @@ const facePropsSchema = z.object({
     "scared",
     "dead",
   ]),
-  eyeStyle: z.enum(["dot", "circle", "oval", "angry", "closed", "wink", "wide"]),
+  eyeStyle: z.enum([
+    "dot",
+    "circle",
+    "oval",
+    "angry",
+    "closed",
+    "wink",
+    "wide",
+    "sleepy",
+    "sparkle",
+    "heart",
+    "cross",
+    "laughing",
+    "attentive",
+    "roll-eyes",
+    "google-eyes",
+    "intense",
+    "puppy-eyes",
+    "money",
+    "slanted",
+    "side-eye",
+    "tiny",
+    "half-lidded",
+  ]),
   eyeSize: z.number(),
   eyeSpacing: z.number(),
   eyeOffsetY: z.number(),
   eyeColor: z.string(),
   pupilSize: z.number(),
-  mouthStyle: z.enum(["smile", "frown", "open", "line", "o", "teeth", "wavy", "small-smile"]),
+  mouthStyle: z.enum([
+    "smile",
+    "frown",
+    "open",
+    "line",
+    "o",
+    "teeth",
+    "wavy",
+    "small-smile",
+    "tongue",
+    "tongue-smile",
+    "toothy-grin",
+    "fangs",
+    "grin",
+    "smirk-open",
+    "shout",
+    "grimace",
+  ]),
   mouthSize: z.number(),
   mouthOffsetY: z.number(),
   mouthColor: z.string(),
@@ -116,8 +174,51 @@ const limbPropsSchema = z.object({
   armLength: z.number(),
   legLength: z.number(),
   armSpread: z.number(),
+  armRotationDeg: z.number().default(0),
   legSpread: z.number(),
   feet: z.boolean(),
+  shoeStyle: z.enum(["kicks", "dress", "boots", "slides", "cool"]).default("kicks"),
+  shoeColor: z.string().default("#111111"),
+  shoeSoleColor: z.string().default("#f2f4f7"),
+  shoeAccessory: z.enum(["none", "laces", "stripe", "buckle", "charm", "wings"]).default("none"),
+  shoeAccessoryColor: z.string().default("#ffffff"),
+  handStyle: z.preprocess(
+    (value) => {
+      if (value === "yes") return "thumbs-up";
+      if (value === "no") return "thumbs-down";
+      return value;
+    },
+    z
+      .enum([
+        "thumbs-up",
+        "thumbs-down",
+        "peace",
+        "number-1",
+        "cool",
+        "surfer",
+        "heart",
+        "hi-five",
+        "fist-bump",
+        "handshake",
+        "clapping",
+        "congrats",
+        "mittens",
+        "cartoon",
+      ])
+      .default("cartoon")
+  ),
+  handColor: z.string().default("#f4c29b"),
+});
+
+const accessoryPropsSchema = z.object({
+  id: z.string(),
+  type: z.enum(["hat", "glasses", "prop", "other"]),
+  name: z.string(),
+  x: z.number(),
+  y: z.number(),
+  scale: z.number(),
+  rotation: z.number(),
+  color: z.string().optional(),
 });
 
 const sceneNodeSchema = z.object({
@@ -140,6 +241,7 @@ const sceneNodeSchema = z.object({
   face: facePropsSchema.optional(),
   faceKeyframes: z.array(faceKeyframeSchema).optional(),
   limbs: limbPropsSchema.optional(),
+  accessories: z.array(accessoryPropsSchema).optional(),
 });
 
 const sceneDocumentSchema = z.object({

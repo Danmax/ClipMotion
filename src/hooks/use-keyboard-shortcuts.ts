@@ -117,6 +117,7 @@ export function useKeyboardShortcuts(onSave?: () => void | Promise<boolean>) {
           r: "rotate",
           s: "scale",
           b: "bone",
+          p: "pen",
         };
         if (e.key in toolMap) {
           setActiveTool(toolMap[e.key]);

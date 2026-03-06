@@ -187,7 +187,32 @@ export function PropertiesPanel() {
                     }
                     className="flex-1 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                   >
-                    {(["dot", "circle", "oval", "angry", "closed", "wink", "wide"] as const).map((s) => (
+                    {(
+                      [
+                        "dot",
+                        "circle",
+                        "oval",
+                        "angry",
+                        "closed",
+                        "wink",
+                        "wide",
+                        "sleepy",
+                        "sparkle",
+                        "heart",
+                        "cross",
+                        "laughing",
+                        "attentive",
+                        "roll-eyes",
+                        "google-eyes",
+                        "intense",
+                        "puppy-eyes",
+                        "money",
+                        "slanted",
+                        "side-eye",
+                        "tiny",
+                        "half-lidded",
+                      ] as const
+                    ).map((s) => (
                       <option key={s} value={s}>
                         {s}
                       </option>
@@ -273,7 +298,26 @@ export function PropertiesPanel() {
                     }
                     className="flex-1 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                   >
-                    {(["smile", "frown", "open", "line", "o", "teeth", "wavy", "small-smile"] as const).map((s) => (
+                    {(
+                      [
+                        "smile",
+                        "frown",
+                        "open",
+                        "line",
+                        "o",
+                        "teeth",
+                        "wavy",
+                        "small-smile",
+                        "tongue",
+                        "tongue-smile",
+                        "toothy-grin",
+                        "fangs",
+                        "grin",
+                        "smirk-open",
+                        "shout",
+                        "grimace",
+                      ] as const
+                    ).map((s) => (
                       <option key={s} value={s}>
                         {s}
                       </option>

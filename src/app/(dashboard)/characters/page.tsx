@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { Plus } from "lucide-react";
 import { CharacterCard } from "@/components/character-builder/character-card";
+import { DigitizeUploadButton } from "@/components/character-builder/digitize-upload-button";
 import { redirect } from "next/navigation";
 
 export default async function CharactersPage() {
@@ -23,13 +24,16 @@ export default async function CharactersPage() {
             Create characters to use in your animations
           </p>
         </div>
-        <Link
-          href="/characters/new"
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-500 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Create Character
-        </Link>
+        <div className="flex items-start gap-2">
+          <DigitizeUploadButton />
+          <Link
+            href="/characters/new"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-500 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Create Character
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">

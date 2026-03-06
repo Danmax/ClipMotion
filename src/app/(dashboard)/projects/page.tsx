@@ -10,7 +10,36 @@ export default async function ProjectsPage() {
 
   const projects = await db.project.findMany({
     where: { userId: session.user.id },
+    include: {
+      scenes: {
+        orderBy: { order: "asc" },
+        take: 1,
+      },
+    },
     orderBy: { updatedAt: "desc" },
+  });
+
+  const projectsWithPreview = projects.map((project) => {
+    let previewSceneData: Record<string, unknown> | null = null;
+    const raw = project.scenes[0]?.data;
+    if (typeof raw === "string") {
+      try {
+        previewSceneData = JSON.parse(raw) as Record<string, unknown>;
+      } catch {
+        previewSceneData = null;
+      }
+    }
+
+    return {
+      id: project.id,
+      name: project.name,
+      fps: project.fps,
+      updatedAt: project.updatedAt,
+      thumbnail: project.thumbnail,
+      width: project.width,
+      height: project.height,
+      previewSceneData,
+    };
   });
 
   return (
@@ -43,7 +72,7 @@ export default async function ProjectsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {projects.map((project) => (
+          {projectsWithPreview.map((project) => (
             <ProjectCard key={project.id} project={project} />
           ))}
         </div>

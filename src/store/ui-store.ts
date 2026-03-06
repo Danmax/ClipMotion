@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type ToolId = "select" | "move" | "rotate" | "scale" | "bone";
+export type ToolId = "select" | "move" | "rotate" | "scale" | "bone" | "pen";
 export type AspectRatio = "1:1" | "3:4" | "16:9" | "9:16";
 
 interface UIState {

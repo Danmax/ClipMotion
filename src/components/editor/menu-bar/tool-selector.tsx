@@ -5,6 +5,7 @@ import {
   Move,
   RotateCw,
   Maximize2,
+  PenTool,
 } from "lucide-react";
 import { useUIStore, type ToolId } from "@/store/ui-store";
 
@@ -13,6 +14,7 @@ const TOOLS: { id: ToolId; icon: React.ElementType; label: string }[] = [
   { id: "move", icon: Move, label: "Move" },
   { id: "rotate", icon: RotateCw, label: "Rotate" },
   { id: "scale", icon: Maximize2, label: "Scale" },
+  { id: "pen", icon: PenTool, label: "Pen" },
 ];
 
 export function ToolSelector() {

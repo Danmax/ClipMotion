@@ -52,6 +52,8 @@ export interface SceneNode {
   faceKeyframes?: FaceKeyframe[];
   /** Limbs (arms + legs) */
   limbs?: LimbProps;
+  /** Optional accessories detected/attached to this character */
+  accessories?: AccessoryProps[];
 }
 
 export interface FaceKeyframe {
@@ -62,7 +64,20 @@ export interface FaceKeyframe {
 
 export type NodeType = "container" | "sprite" | "shape" | "text" | "bone";
 
-export type ShapeType = "rectangle" | "ellipse" | "triangle" | "star" | "polygon" | "stickfigure";
+export type ShapeType =
+  | "rectangle"
+  | "ellipse"
+  | "triangle"
+  | "star"
+  | "polygon"
+  | "custom-path"
+  | "capsule"
+  | "diamond"
+  | "trapezoid"
+  | "parallelogram"
+  | "blob"
+  | "asymmetric-blob"
+  | "stickfigure";
 
 export interface ShapeProps {
   shapeType: ShapeType;
@@ -72,9 +87,22 @@ export interface ShapeProps {
   stroke?: string;
   strokeWidth?: number;
   cornerRadius?: number;
+  pattern?: ShapePattern;
+  patternColor?: string;
+  patternScale?: number;
   /** Number of points for star, sides for polygon */
   points?: number;
+  /** Local points for custom-path shape (coordinates relative to node center). */
+  customPath?: Array<{ x: number; y: number }>;
 }
+
+export type ShapePattern =
+  | "none"
+  | "stripes"
+  | "dots"
+  | "checker"
+  | "crosshatch"
+  | "zigzag";
 
 export interface TextProps {
   content: string;
@@ -85,8 +113,46 @@ export interface TextProps {
   textAlign?: "left" | "center" | "right";
 }
 
-export type EyeStyle = "dot" | "circle" | "oval" | "angry" | "closed" | "wink" | "wide";
-export type MouthStyle = "smile" | "frown" | "open" | "line" | "o" | "teeth" | "wavy" | "small-smile";
+export type EyeStyle =
+  | "dot"
+  | "circle"
+  | "oval"
+  | "angry"
+  | "closed"
+  | "wink"
+  | "wide"
+  | "sleepy"
+  | "sparkle"
+  | "heart"
+  | "cross"
+  | "laughing"
+  | "attentive"
+  | "roll-eyes"
+  | "google-eyes"
+  | "intense"
+  | "puppy-eyes"
+  | "money"
+  | "slanted"
+  | "side-eye"
+  | "tiny"
+  | "half-lidded";
+export type MouthStyle =
+  | "smile"
+  | "frown"
+  | "open"
+  | "line"
+  | "o"
+  | "teeth"
+  | "wavy"
+  | "small-smile"
+  | "tongue"
+  | "tongue-smile"
+  | "toothy-grin"
+  | "fangs"
+  | "grin"
+  | "smirk-open"
+  | "shout"
+  | "grimace";
 export type EyebrowStyle = "none" | "line" | "arc" | "angry" | "sad";
 export type MouthEffect = "none" | "talk";
 export type ExpressionPreset =
@@ -139,6 +205,23 @@ export interface FaceProps {
 }
 
 export type LimbStyle = "straight" | "bent" | "none";
+export type ShoeStyle = "kicks" | "dress" | "boots" | "slides" | "cool";
+export type ShoeAccessoryStyle = "none" | "laces" | "stripe" | "buckle" | "charm" | "wings";
+export type HandStyle =
+  | "thumbs-up"
+  | "thumbs-down"
+  | "peace"
+  | "number-1"
+  | "cool"
+  | "surfer"
+  | "heart"
+  | "hi-five"
+  | "fist-bump"
+  | "handshake"
+  | "clapping"
+  | "congrats"
+  | "mittens"
+  | "cartoon";
 
 export interface LimbProps {
   armStyle: LimbStyle;
@@ -148,8 +231,29 @@ export interface LimbProps {
   armLength: number;      // 0.3-1.5 multiplier
   legLength: number;      // 0.3-1.5 multiplier
   armSpread: number;      // 0-1 how far apart arms spread
+  armRotationDeg: number; // -120..120 arm lift/rotation
   legSpread: number;      // 0-1 how far apart legs spread
   feet: boolean;          // draw small feet at end of legs
+  shoeStyle: ShoeStyle;
+  shoeColor: string;
+  shoeSoleColor: string;
+  shoeAccessory: ShoeAccessoryStyle;
+  shoeAccessoryColor: string;
+  handStyle: HandStyle;
+  handColor: string;
+}
+
+export type AccessoryType = "hat" | "glasses" | "prop" | "other";
+
+export interface AccessoryProps {
+  id: string;
+  type: AccessoryType;
+  name: string;
+  x: number;
+  y: number;
+  scale: number;
+  rotation: number;
+  color?: string;
 }
 
 export const DEFAULT_LIMBS: LimbProps = {
@@ -160,8 +264,16 @@ export const DEFAULT_LIMBS: LimbProps = {
   armLength: 0.8,
   legLength: 0.9,
   armSpread: 0.5,
+  armRotationDeg: 0,
   legSpread: 0.3,
   feet: true,
+  shoeStyle: "kicks",
+  shoeColor: "#111111",
+  shoeSoleColor: "#f2f4f7",
+  shoeAccessory: "none",
+  shoeAccessoryColor: "#ffffff",
+  handStyle: "cartoon",
+  handColor: "#f4c29b",
 };
 
 export const DEFAULT_FACE: FaceProps = {

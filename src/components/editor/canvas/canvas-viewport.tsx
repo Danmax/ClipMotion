@@ -1,13 +1,13 @@
 "use client";
 
-import { useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect, useCallback, useState } from "react";
 import { Application, Container, Graphics, Text, TextStyle, FederatedPointerEvent } from "pixi.js";
 import { useEditorStore } from "@/store/editor-store";
 import { usePlaybackStore } from "@/store/playback-store";
 import { useSelectionStore } from "@/store/selection-store";
-import { useUIStore } from "@/store/ui-store";
+import { useUIStore, type ToolId } from "@/store/ui-store";
 import { getEffectiveParallaxFactor, sampleScene } from "@/engine/keyframe-engine";
-import { hexToNumber, drawShapeBody, drawFace, drawLimbs } from "@/lib/draw-character";
+import { hexToNumber, drawShapeBody, drawFace, drawLimbs, drawAccessories, drawShapePattern } from "@/lib/draw-character";
 import type { SceneNode } from "@/engine/types";
 
 function syncSceneViewport(app: Application, sceneContainer: Container, zoom: number) {
@@ -22,7 +22,12 @@ export function CanvasViewport() {
   const containerRef = useRef<HTMLDivElement>(null);
   const appRef = useRef<Application | null>(null);
   const sceneContainerRef = useRef<Container | null>(null);
+  const [canvasReady, setCanvasReady] = useState(false);
+  const [penPoints, setPenPoints] = useState<Array<{ x: number; y: number }>>([]);
   const canvasZoomRef = useRef(1);
+  const activeToolRef = useRef<ToolId>("select");
+  const penPointsRef = useRef<Array<{ x: number; y: number }>>([]);
+  const finalizePenPathRef = useRef<() => boolean>(() => false);
   const dragStateRef = useRef<{
     nodeId: string;
     startX: number;
@@ -35,6 +40,7 @@ export function CanvasViewport() {
   const canvasWidth = useEditorStore((s) => s.canvasWidth);
   const canvasHeight = useEditorStore((s) => s.canvasHeight);
   const durationMs = useEditorStore((s) => s.durationMs);
+  const addShapeNode = useEditorStore((s) => s.addShapeNode);
   const updateNodeTransform = useEditorStore((s) => s.updateNodeTransform);
   const currentTimeMs = usePlaybackStore((s) => s.currentTimeMs);
   const selectedNodeIds = useSelectionStore((s) => s.selectedNodeIds);
@@ -42,14 +48,81 @@ export function CanvasViewport() {
   const clearNodeSelection = useSelectionStore((s) => s.clearNodeSelection);
   const clearSelectionRef = useRef(clearNodeSelection);
   const canvasZoom = useUIStore((s) => s.canvasZoom);
+  const activeTool = useUIStore((s) => s.activeTool);
   const setCanvasZoom = useUIStore((s) => s.setCanvasZoom);
 
   useEffect(() => {
     canvasZoomRef.current = canvasZoom;
   }, [canvasZoom]);
   useEffect(() => {
+    activeToolRef.current = activeTool;
+  }, [activeTool]);
+  useEffect(() => {
+    penPointsRef.current = penPoints;
+  }, [penPoints]);
+  useEffect(() => {
     clearSelectionRef.current = clearNodeSelection;
   }, [clearNodeSelection]);
+
+  const finalizePenPath = useCallback(() => {
+    const points = penPointsRef.current;
+    if (points.length < 3) return false;
+
+    let minX = Number.POSITIVE_INFINITY;
+    let minY = Number.POSITIVE_INFINITY;
+    let maxX = Number.NEGATIVE_INFINITY;
+    let maxY = Number.NEGATIVE_INFINITY;
+    for (const p of points) {
+      minX = Math.min(minX, p.x);
+      minY = Math.min(minY, p.y);
+      maxX = Math.max(maxX, p.x);
+      maxY = Math.max(maxY, p.y);
+    }
+
+    const width = Math.max(12, maxX - minX);
+    const height = Math.max(12, maxY - minY);
+    const cx = minX + width / 2;
+    const cy = minY + height / 2;
+    const customPath = points.map((p) => ({ x: p.x - cx, y: p.y - cy }));
+
+    const nodeId = addShapeNode(
+      "Pen Shape",
+      {
+        shapeType: "custom-path",
+        width: Math.round(width),
+        height: Math.round(height),
+        fill: "#58a6ff",
+        customPath,
+      },
+      { x: cx, y: cy }
+    );
+    selectNode(nodeId);
+    setPenPoints([]);
+    return true;
+  }, [addShapeNode, selectNode]);
+
+  useEffect(() => {
+    finalizePenPathRef.current = finalizePenPath;
+  }, [finalizePenPath]);
+
+  useEffect(() => {
+    if (activeTool !== "pen") return;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setPenPoints([]);
+        return;
+      }
+      if (e.key === "Enter") {
+        e.preventDefault();
+        finalizePenPath();
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [activeTool, finalizePenPath]);
 
   // Initialize PixiJS
   useEffect(() => {
@@ -85,6 +158,7 @@ export function CanvasViewport() {
 
       // Background fill for the canvas area (centered on origin)
       const bg = new Graphics();
+      bg.label = "canvas-bg";
       bg.rect(-canvasWidth / 2, -canvasHeight / 2, canvasWidth, canvasHeight);
       bg.fill({ color: 0xf8fafc });
       bg.stroke({ width: 1, color: 0xcfd8e3 });
@@ -98,8 +172,29 @@ export function CanvasViewport() {
         dragStateRef.current = null;
       });
       app.stage.on("pointerdown", (e: FederatedPointerEvent) => {
+        if (activeToolRef.current === "pen") {
+          const localPos = sceneContainer.toLocal(e.global);
+          const points = penPointsRef.current;
+          if (points.length >= 3) {
+            const first = points[0];
+            const closeRadius = 12 / Math.max(0.1, canvasZoomRef.current);
+            const dx = localPos.x - first.x;
+            const dy = localPos.y - first.y;
+            if (dx * dx + dy * dy <= closeRadius * closeRadius) {
+              finalizePenPathRef.current();
+              return;
+            }
+          }
+          setPenPoints((prev) => [...prev, { x: localPos.x, y: localPos.y }]);
+          return;
+        }
+
+        if (penPointsRef.current.length > 0) {
+          setPenPoints([]);
+        }
+
         // Only clear when user clicks empty stage/background, not a node.
-        if (e.target === app.stage) {
+        if (e.target === app.stage || e.target === bg) {
           clearSelectionRef.current();
         }
       });
@@ -132,10 +227,13 @@ export function CanvasViewport() {
       if (containerEl) {
         resizeObserver.observe(containerEl);
       }
+
+      setCanvasReady(true);
     });
 
     return () => {
       destroyed = true;
+      setCanvasReady(false);
       initPromise.then(() => {
         if (handleRendererResize) {
           app.renderer.off("resize", handleRendererResize);
@@ -159,6 +257,7 @@ export function CanvasViewport() {
 
   // Render scene nodes
   useEffect(() => {
+    if (!canvasReady) return;
     const container = sceneContainerRef.current;
     if (!container) return;
 
@@ -198,7 +297,7 @@ export function CanvasViewport() {
       nodeContainer.scale.set(transform.scaleX, transform.scaleY);
       nodeContainer.alpha = transform.opacity;
       nodeContainer.eventMode = "static";
-      nodeContainer.cursor = "pointer";
+      nodeContainer.cursor = activeToolRef.current === "pen" ? "crosshair" : "pointer";
       nodeContainer.label = nodeId;
 
       const isSelected = selectedNodeIds.has(nodeId);
@@ -211,6 +310,9 @@ export function CanvasViewport() {
 
       // Pointer interactions
       nodeContainer.on("pointerdown", (e: FederatedPointerEvent) => {
+        if (activeToolRef.current === "pen") {
+          return;
+        }
         e.stopPropagation();
         selectNode(nodeId, e.shiftKey);
 
@@ -239,7 +341,32 @@ export function CanvasViewport() {
     for (const childId of sortedRootChildren) {
       renderNode(childId);
     }
-  }, [document, currentTimeMs, durationMs, selectedNodeIds, selectNode]);
+
+    if (activeTool === "pen" && penPoints.length > 0) {
+      const guide = new Graphics();
+      guide.label = "pen-guide";
+      guide.eventMode = "none";
+
+      const strokeWidth = Math.max(1.2, 2 / Math.max(0.1, canvasZoomRef.current));
+      const pointRadius = Math.max(2.2, 4 / Math.max(0.1, canvasZoomRef.current));
+      const first = penPoints[0];
+
+      guide.moveTo(first.x, first.y);
+      for (let i = 1; i < penPoints.length; i += 1) {
+        guide.lineTo(penPoints[i].x, penPoints[i].y);
+      }
+      guide.stroke({ width: strokeWidth, color: 0x0ea5e9, alpha: 0.95 });
+
+      for (let i = 0; i < penPoints.length; i += 1) {
+        const p = penPoints[i];
+        const isFirst = i === 0;
+        guide.circle(p.x, p.y, pointRadius * (isFirst ? 1.35 : 1));
+        guide.fill({ color: isFirst ? 0x22d3ee : 0x38bdf8, alpha: 0.95 });
+      }
+
+      container.addChild(guide);
+    }
+  }, [canvasReady, document, currentTimeMs, durationMs, selectedNodeIds, selectNode, activeTool, penPoints]);
 
   // Zoom with mouse wheel
   const handleWheel = useCallback(
@@ -254,12 +381,19 @@ export function CanvasViewport() {
   );
 
   return (
-    <div className="relative w-full h-full bg-[#dfe5eb] overflow-hidden rounded-2xl border border-[#cfd8e3]">
+    <div id="editor-canvas-viewport" className="relative w-full h-full bg-[#dfe5eb] overflow-hidden rounded-2xl border border-[#cfd8e3]">
       <div
         ref={containerRef}
         className="w-full h-full"
         onWheel={handleWheel}
       />
+      {activeTool === "pen" && (
+        <div className="absolute top-3 left-3 text-[11px] text-cyan-900 bg-cyan-100/95 px-2.5 py-1.5 rounded border border-cyan-300">
+          {penPoints.length >= 3
+            ? "Pen: click first point or press Enter to close shape. Esc cancels."
+            : "Pen: click to place points. Need at least 3 points."}
+        </div>
+      )}
       <div className="absolute bottom-3 right-3 text-xs text-gray-600 bg-white/85 px-2 py-1 rounded">
         {Math.round(canvasZoom * 100)}%
       </div>
@@ -323,10 +457,15 @@ function drawShape(
   const body = new Graphics();
   const { w, h } = drawShapeBody(body, shape);
   nodeContainer.addChild(body);
+  drawShapePattern(nodeContainer, shape, w, h);
 
   const sampledFace = sampleFaceAtTime(node, timeMs);
   if (sampledFace) {
     drawFace(nodeContainer, sampledFace, w, h, timeMs);
+  }
+
+  if (node.accessories && node.accessories.length > 0) {
+    drawAccessories(nodeContainer, node.accessories, w, h);
   }
 
   if (node.showLabel) {

@@ -8,8 +8,10 @@ import { applyPreset, EXPRESSION_PRESETS } from "@/engine/face-presets";
 import { DEFAULT_FACE, DEFAULT_LIMBS } from "@/engine/types";
 import type {
   ShapeProps,
+  ShapePattern,
   FaceProps,
   LimbProps,
+  AccessoryProps,
   ShapeType,
   ExpressionPreset,
   EyeStyle,
@@ -17,6 +19,9 @@ import type {
   MouthEffect,
   EyebrowStyle,
   LimbStyle,
+  HandStyle,
+  ShoeAccessoryStyle,
+  ShoeStyle,
 } from "@/engine/types";
 import {
   Circle,
@@ -24,24 +29,42 @@ import {
   Triangle,
   Star,
   Hexagon,
+  Diamond,
   Save,
   ArrowLeft,
   Shuffle,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import Link from "next/link";
 
 const SHAPE_OPTIONS: { type: ShapeType; icon: React.ElementType; label: string }[] = [
   { type: "rectangle", icon: Square, label: "Square" },
   { type: "ellipse", icon: Circle, label: "Circle" },
+  { type: "capsule", icon: Circle, label: "Capsule" },
   { type: "triangle", icon: Triangle, label: "Triangle" },
+  { type: "trapezoid", icon: Square, label: "Trapezoid" },
+  { type: "parallelogram", icon: Square, label: "Parallelogram" },
+  { type: "diamond", icon: Diamond, label: "Diamond" },
   { type: "star", icon: Star, label: "Star" },
   { type: "polygon", icon: Hexagon, label: "Hexagon" },
+  { type: "blob", icon: Circle, label: "Blob" },
+  { type: "asymmetric-blob", icon: Circle, label: "Asym Blob" },
 ];
 
 const PRESET_COLORS = [
   "#ff4444", "#ff8844", "#ffcc00", "#44cc44", "#44aaff", "#8844ff",
   "#ff44aa", "#00cccc", "#ffffff", "#aaaaaa", "#8B4513", "#222222",
   "#ccff00", "#00cc33", "#ff69b4", "#87ceeb",
+];
+
+const PATTERN_OPTIONS: { value: ShapePattern; label: string }[] = [
+  { value: "none", label: "None" },
+  { value: "stripes", label: "Stripes" },
+  { value: "dots", label: "Dots" },
+  { value: "checker", label: "Checker" },
+  { value: "crosshatch", label: "Crosshatch" },
+  { value: "zigzag", label: "Zigzag" },
 ];
 
 const EYE_STYLES: { style: EyeStyle; label: string }[] = [
@@ -52,6 +75,21 @@ const EYE_STYLES: { style: EyeStyle; label: string }[] = [
   { style: "closed", label: "Closed" },
   { style: "wink", label: "Wink" },
   { style: "wide", label: "Wide" },
+  { style: "sleepy", label: "Sleepy" },
+  { style: "sparkle", label: "Sparkle" },
+  { style: "heart", label: "Heart" },
+  { style: "cross", label: "Cross" },
+  { style: "laughing", label: "Laughing" },
+  { style: "attentive", label: "Attentive" },
+  { style: "roll-eyes", label: "Roll Eyes" },
+  { style: "google-eyes", label: "Google Eyes" },
+  { style: "intense", label: "Intense" },
+  { style: "puppy-eyes", label: "Puppy Eyes" },
+  { style: "money", label: "Money" },
+  { style: "slanted", label: "Slanted" },
+  { style: "side-eye", label: "Side Eye" },
+  { style: "tiny", label: "Tiny" },
+  { style: "half-lidded", label: "Half Lidded" },
 ];
 
 const MOUTH_STYLES: { style: MouthStyle; label: string }[] = [
@@ -61,8 +99,16 @@ const MOUTH_STYLES: { style: MouthStyle; label: string }[] = [
   { style: "open", label: "Open" },
   { style: "o", label: "O" },
   { style: "teeth", label: "Teeth" },
+  { style: "toothy-grin", label: "Grin" },
   { style: "wavy", label: "Wavy" },
   { style: "small-smile", label: "Smirk" },
+  { style: "tongue", label: "Tongue" },
+  { style: "tongue-smile", label: "Tongue Smile" },
+  { style: "fangs", label: "Fangs" },
+  { style: "grin", label: "Grin+" },
+  { style: "smirk-open", label: "Smirk Open" },
+  { style: "shout", label: "Shout" },
+  { style: "grimace", label: "Grimace" },
 ];
 
 const MOUTH_EFFECTS: { effect: MouthEffect; label: string }[] = [
@@ -84,6 +130,40 @@ const LIMB_STYLES: { style: LimbStyle; label: string }[] = [
   { style: "bent", label: "Bent" },
 ];
 
+const SHOE_STYLES: { style: ShoeStyle; label: string }[] = [
+  { style: "kicks", label: "Kicks" },
+  { style: "dress", label: "Dress Shoes" },
+  { style: "boots", label: "Boots" },
+  { style: "slides", label: "Slides" },
+  { style: "cool", label: "Cool" },
+];
+
+const SHOE_ACCESSORY_STYLES: { style: ShoeAccessoryStyle; label: string }[] = [
+  { style: "none", label: "None" },
+  { style: "laces", label: "Laces" },
+  { style: "stripe", label: "Stripe" },
+  { style: "buckle", label: "Buckle" },
+  { style: "charm", label: "Charm" },
+  { style: "wings", label: "Wings" },
+];
+
+const HAND_STYLES: { style: HandStyle; label: string }[] = [
+  { style: "thumbs-up", label: "Thumbs Up" },
+  { style: "thumbs-down", label: "Thumbs Down" },
+  { style: "peace", label: "Peace" },
+  { style: "number-1", label: "Number 1" },
+  { style: "cool", label: "Cool" },
+  { style: "surfer", label: "Surfer" },
+  { style: "heart", label: "Heart" },
+  { style: "hi-five", label: "Hi Five" },
+  { style: "fist-bump", label: "Fist Bump" },
+  { style: "handshake", label: "Hand Shake" },
+  { style: "clapping", label: "Clapping" },
+  { style: "congrats", label: "Congratulate" },
+  { style: "mittens", label: "Mittens" },
+  { style: "cartoon", label: "Cartoon" },
+];
+
 const EXPRESSION_LIST = Object.keys(EXPRESSION_PRESETS) as ExpressionPreset[];
 
 const RANDOM_NAMES = [
@@ -101,20 +181,61 @@ function randRange(min: number, max: number, step = 1): number {
   return min + Math.round(Math.random() * steps) * step;
 }
 
+function supportsCornerRadius(shapeType: ShapeType): boolean {
+  return [
+    "rectangle",
+    "triangle",
+    "star",
+    "polygon",
+    "capsule",
+    "diamond",
+    "trapezoid",
+    "parallelogram",
+  ].includes(shapeType);
+}
+
+function defaultCornerRadius(shapeType: ShapeType, width: number, height: number): number {
+  if (shapeType === "capsule") {
+    return Math.round(Math.min(width, height) / 2);
+  }
+  return Math.round(Math.min(width, height) * 0.08);
+}
+
 function generateRandomCharacter() {
-  const shapeTypes: ShapeType[] = ["rectangle", "ellipse", "triangle", "star", "polygon"];
+  const shapeTypes: ShapeType[] = [
+    "rectangle",
+    "ellipse",
+    "capsule",
+    "triangle",
+    "trapezoid",
+    "parallelogram",
+    "diamond",
+    "star",
+    "polygon",
+    "blob",
+    "asymmetric-blob",
+  ];
   const shapeType = pick(shapeTypes);
+  const width = randRange(60, 180, 10);
+  const height = randRange(60, 180, 10);
+  const canRound = supportsCornerRadius(shapeType);
+  const randomPattern = Math.random() > 0.6 ? pick(PATTERN_OPTIONS.filter((p) => p.value !== "none")).value : "none";
   const shape: ShapeProps = {
     shapeType,
-    width: randRange(60, 180, 10),
-    height: randRange(60, 180, 10),
+    width,
+    height,
     fill: pick(PRESET_COLORS),
+    pattern: randomPattern,
+    patternColor: "#ffffff",
+    patternScale: 1,
     points: shapeType === "star" ? randRange(4, 8) : shapeType === "polygon" ? randRange(4, 8) : undefined,
-    cornerRadius: shapeType === "rectangle" ? randRange(0, 20, 4) : undefined,
+    cornerRadius: canRound ? randRange(0, Math.max(4, defaultCornerRadius(shapeType, width, height)), 2) : undefined,
   };
 
   const expression = pick(EXPRESSION_LIST);
   const face = applyPreset(expression);
+  face.eyeStyle = pick(EYE_STYLES).style;
+  face.mouthStyle = pick(MOUTH_STYLES).style;
   face.eyeSize = randRange(0.5, 2.0, 0.1);
   face.eyeSpacing = randRange(0.5, 1.5, 0.1);
   face.mouthSize = randRange(0.5, 2.0, 0.1);
@@ -129,11 +250,33 @@ function generateRandomCharacter() {
     armLength: randRange(0.4, 1.3, 0.1),
     legLength: randRange(0.4, 1.3, 0.1),
     armSpread: randRange(0.1, 0.8, 0.1),
+    armRotationDeg: randRange(-60, 60, 5),
     legSpread: randRange(0.1, 0.7, 0.1),
     feet: Math.random() > 0.3,
+    shoeStyle: pick(SHOE_STYLES).style,
+    shoeColor: Math.random() > 0.7 ? pick(PRESET_COLORS) : "#111111",
+    shoeSoleColor: Math.random() > 0.65 ? pick(PRESET_COLORS) : "#f2f4f7",
+    shoeAccessory: pick(SHOE_ACCESSORY_STYLES).style,
+    shoeAccessoryColor: Math.random() > 0.65 ? pick(PRESET_COLORS) : "#ffffff",
+    handStyle: pick(HAND_STYLES).style,
+    handColor: Math.random() > 0.65 ? pick(PRESET_COLORS) : "#f4c29b",
   };
 
-  return { name: pick(RANDOM_NAMES), shape, face, limbs };
+  const accessories: AccessoryProps[] = [];
+  if (Math.random() > 0.65) {
+    accessories.push({
+      id: `acc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      type: "hat",
+      name: "Hat",
+      x: 0,
+      y: -34,
+      scale: 1,
+      rotation: 0,
+      color: "#222222",
+    });
+  }
+
+  return { name: pick(RANDOM_NAMES), shape, face, limbs, accessories };
 }
 
 interface CharacterBuilderProps {
@@ -142,6 +285,25 @@ interface CharacterBuilderProps {
   initialShape?: ShapeProps;
   initialFace?: FaceProps;
   initialLimbs?: LimbProps;
+  initialAccessories?: AccessoryProps[];
+  initialDigitizationMeta?: {
+    confidence?: number;
+    warnings?: string[];
+    modelVersion?: string;
+    partConfidence?: {
+      body?: number;
+      arms?: number;
+      legs?: number;
+      face?: number;
+      accessories?: number;
+    };
+    image?: {
+      format?: string;
+      width?: number;
+      height?: number;
+      aspectRatio?: number;
+    };
+  } | null;
 }
 
 export function CharacterBuilder({
@@ -150,6 +312,8 @@ export function CharacterBuilder({
   initialShape,
   initialFace,
   initialLimbs,
+  initialAccessories,
+  initialDigitizationMeta,
 }: CharacterBuilderProps) {
   const router = useRouter();
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -169,7 +333,11 @@ export function CharacterBuilder({
     }
   );
   const [face, setFace] = useState<FaceProps>({ ...DEFAULT_FACE, ...(initialFace ?? applyPreset("happy")) });
-  const [limbs, setLimbs] = useState<LimbProps>(initialLimbs ?? { ...DEFAULT_LIMBS });
+  const [limbs, setLimbs] = useState<LimbProps>({ ...DEFAULT_LIMBS, ...(initialLimbs ?? {}) });
+  const [accessories, setAccessories] = useState<AccessoryProps[]>(initialAccessories ?? []);
+  const [selectedAccessoryId, setSelectedAccessoryId] = useState<string | null>(
+    initialAccessories?.[0]?.id ?? null
+  );
 
   // Initialize PixiJS preview
   useEffect(() => {
@@ -184,6 +352,7 @@ export function CharacterBuilder({
       antialias: true,
     }).then(() => {
       if (destroyed || !canvasRef.current) return;
+      canvasRef.current.innerHTML = "";
       canvasRef.current.appendChild(app.canvas as HTMLCanvasElement);
       appRef.current = app;
 
@@ -208,12 +377,15 @@ export function CharacterBuilder({
 
   const renderPreview = useCallback((timeMs = Date.now()) => {
     const scene = sceneRef.current;
+    const app = appRef.current;
     if (!scene) return;
 
     scene.removeChildren();
     const hasLimbs = limbs.armStyle !== "none" || limbs.legStyle !== "none";
-    drawCharacter(scene, shape, face, hasLimbs ? limbs : undefined, timeMs);
-  }, [shape, face, limbs]);
+    drawCharacter(scene, shape, face, hasLimbs ? limbs : undefined, accessories, timeMs);
+    // Force a render tick for cases where the preview can miss an auto-refresh.
+    app?.renderer.render(app.stage);
+  }, [shape, face, limbs, accessories]);
 
   // Re-render character on every state change
   useEffect(() => {
@@ -257,6 +429,43 @@ export function CharacterBuilder({
     setShape(r.shape);
     setFace(r.face);
     setLimbs(r.limbs);
+    setAccessories(r.accessories);
+    setSelectedAccessoryId(r.accessories[0]?.id ?? null);
+  }, []);
+
+  const addAccessory = useCallback((type: AccessoryProps["type"]) => {
+    const id = `acc-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const defaults: Record<AccessoryProps["type"], Omit<AccessoryProps, "id" | "type" | "name">> = {
+      hat: { x: 0, y: -34, scale: 1, rotation: 0, color: "#222222" },
+      glasses: { x: 0, y: -8, scale: 1, rotation: 0, color: "#111111" },
+      prop: { x: 34, y: 14, scale: 1, rotation: -12, color: "#8b5e34" },
+      other: { x: 0, y: 0, scale: 1, rotation: 0, color: "#666666" },
+    };
+    const labels: Record<AccessoryProps["type"], string> = {
+      hat: "Hat",
+      glasses: "Glasses",
+      prop: "Prop",
+      other: "Accessory",
+    };
+    const next: AccessoryProps = {
+      id,
+      type,
+      name: labels[type],
+      ...defaults[type],
+    };
+    setAccessories((prev) => [...prev, next]);
+    setSelectedAccessoryId(id);
+  }, []);
+
+  const removeAccessory = useCallback((id: string) => {
+    setAccessories((prev) => prev.filter((item) => item.id !== id));
+    setSelectedAccessoryId((prev) => (prev === id ? null : prev));
+  }, []);
+
+  const updateAccessory = useCallback((id: string, updates: Partial<AccessoryProps>) => {
+    setAccessories((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, ...updates } : item))
+    );
   }, []);
 
   const handleSave = async () => {
@@ -276,6 +485,7 @@ export function CharacterBuilder({
           shapeData: JSON.stringify(shape),
           faceData: JSON.stringify(face),
           limbsData: hasLimbs ? JSON.stringify(limbs) : null,
+          accessoriesData: accessories.length > 0 ? JSON.stringify(accessories) : null,
         }),
       });
 
@@ -291,6 +501,20 @@ export function CharacterBuilder({
       setSaving(false);
     }
   };
+
+  const selectedAccessory = selectedAccessoryId
+    ? accessories.find((item) => item.id === selectedAccessoryId) ?? null
+    : null;
+  const patternValue: ShapePattern = shape.pattern ?? "none";
+  const patternScaleValue = Math.max(0.4, Math.min(3, shape.patternScale ?? 1));
+  const cornerRadiusMax = Math.max(2, Math.round(Math.min(shape.width, shape.height) / 2));
+  const cornerRadiusValue = Math.max(
+    0,
+    Math.min(
+      cornerRadiusMax,
+      shape.cornerRadius ?? (supportsCornerRadius(shape.shapeType) ? defaultCornerRadius(shape.shapeType, shape.width, shape.height) : 0)
+    )
+  );
 
   return (
     <div>
@@ -332,7 +556,42 @@ export function CharacterBuilder({
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
+      {initialDigitizationMeta && (
+        <div className="mb-4 px-4 py-2.5 rounded-lg bg-cyan-600/15 border border-cyan-500/30 text-cyan-100 text-sm">
+          <div className="font-medium">Digitized Draft</div>
+          {typeof initialDigitizationMeta.confidence === "number" && (
+            <div className="text-xs text-cyan-200/80 mt-0.5">
+              Confidence: {Math.round(initialDigitizationMeta.confidence * 100)}%
+            </div>
+          )}
+          {Array.isArray(initialDigitizationMeta.warnings) && initialDigitizationMeta.warnings.length > 0 && (
+            <ul className="mt-1 text-xs text-cyan-100/85 list-disc list-inside">
+              {initialDigitizationMeta.warnings.slice(0, 3).map((warning) => (
+                <li key={warning}>{warning}</li>
+              ))}
+            </ul>
+          )}
+          {initialDigitizationMeta.partConfidence && (
+            <div className="mt-2 text-xs text-cyan-100/80 grid grid-cols-2 sm:grid-cols-3 gap-1">
+              <span>Body: {Math.round((initialDigitizationMeta.partConfidence.body ?? 0) * 100)}%</span>
+              <span>Arms: {Math.round((initialDigitizationMeta.partConfidence.arms ?? 0) * 100)}%</span>
+              <span>Legs: {Math.round((initialDigitizationMeta.partConfidence.legs ?? 0) * 100)}%</span>
+              <span>Face: {Math.round((initialDigitizationMeta.partConfidence.face ?? 0) * 100)}%</span>
+              <span>Accessories: {Math.round((initialDigitizationMeta.partConfidence.accessories ?? 0) * 100)}%</span>
+            </div>
+          )}
+          {initialDigitizationMeta.image?.format && (
+            <div className="mt-1 text-[11px] text-cyan-200/70">
+              Source: {initialDigitizationMeta.image.format}
+              {initialDigitizationMeta.image.width && initialDigitizationMeta.image.height
+                ? ` (${initialDigitizationMeta.image.width}x${initialDigitizationMeta.image.height})`
+                : ""}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-6 items-start">
         {/* Controls */}
         <div className="space-y-5">
           {/* Name */}
@@ -349,11 +608,19 @@ export function CharacterBuilder({
 
           {/* Body Shape */}
           <Section title="Body Shape">
-            <div className="grid grid-cols-5 gap-2">
+            <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
               {SHAPE_OPTIONS.map(({ type, icon: Icon, label }) => (
                 <button
                   key={type}
-                  onClick={() => updateShape({ shapeType: type, points: type === "star" ? 5 : type === "polygon" ? 6 : undefined })}
+                  onClick={() =>
+                    updateShape({
+                      shapeType: type,
+                      points: type === "star" ? 5 : type === "polygon" ? 6 : undefined,
+                      cornerRadius: supportsCornerRadius(type)
+                        ? shape.cornerRadius ?? defaultCornerRadius(type, shape.width, shape.height)
+                        : undefined,
+                    })
+                  }
                   className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border transition-all ${
                     shape.shapeType === type
                       ? "border-blue-500 bg-blue-600/20 text-blue-400"
@@ -395,6 +662,48 @@ export function CharacterBuilder({
             </div>
           </Section>
 
+          {/* Pattern */}
+          <Section title="Pattern">
+            <div className="space-y-3">
+              <div className="flex flex-wrap gap-2">
+                {PATTERN_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => updateShape({ pattern: opt.value })}
+                    className={`px-3 py-1.5 rounded-lg border text-xs transition-all ${
+                      patternValue === opt.value
+                        ? "border-blue-500 bg-blue-600/20 text-blue-400"
+                        : "border-gray-700 bg-gray-800/50 text-gray-400 hover:text-white hover:border-gray-600"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              {patternValue !== "none" && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-gray-400 w-16">Pattern</span>
+                    <input
+                      type="color"
+                      value={shape.patternColor ?? "#ffffff"}
+                      onChange={(e) => updateShape({ patternColor: e.target.value })}
+                      className="w-8 h-8 rounded cursor-pointer bg-transparent border border-gray-700"
+                    />
+                  </div>
+                  <SliderField
+                    label="Density"
+                    value={patternScaleValue}
+                    min={0.4}
+                    max={3}
+                    step={0.1}
+                    onChange={(v) => updateShape({ patternScale: v })}
+                  />
+                </div>
+              )}
+            </div>
+          </Section>
+
           {/* Body Size */}
           <Section title="Body Size">
             <div className="grid grid-cols-2 gap-4">
@@ -413,6 +722,17 @@ export function CharacterBuilder({
                 onChange={(v) => updateShape({ height: v })}
               />
             </div>
+            {supportsCornerRadius(shape.shapeType) && (
+              <div className="mt-4">
+                <SliderField
+                  label="Corner Radius"
+                  value={cornerRadiusValue}
+                  min={0}
+                  max={cornerRadiusMax}
+                  onChange={(v) => updateShape({ cornerRadius: v })}
+                />
+              </div>
+            )}
           </Section>
 
           {/* Expression Presets */}
@@ -682,24 +1002,63 @@ export function CharacterBuilder({
                   </div>
 
                   {limbs.armStyle !== "none" && (
-                    <div className="grid grid-cols-2 gap-4">
+                    <>
+                      <div className="grid grid-cols-2 gap-4">
+                        <SliderField
+                          label="Arm Length"
+                          value={limbs.armLength}
+                          min={0.3}
+                          max={1.5}
+                          step={0.1}
+                          onChange={(v) => updateLimbs({ armLength: v })}
+                        />
+                        <SliderField
+                          label="Arm Spread"
+                          value={limbs.armSpread}
+                          min={0}
+                          max={1}
+                          step={0.1}
+                          onChange={(v) => updateLimbs({ armSpread: v })}
+                        />
+                      </div>
                       <SliderField
-                        label="Arm Length"
-                        value={limbs.armLength}
-                        min={0.3}
-                        max={1.5}
-                        step={0.1}
-                        onChange={(v) => updateLimbs({ armLength: v })}
+                        label="Arm Rotation"
+                        value={limbs.armRotationDeg}
+                        min={-120}
+                        max={120}
+                        step={5}
+                        onChange={(v) => updateLimbs({ armRotationDeg: v })}
                       />
-                      <SliderField
-                        label="Arm Spread"
-                        value={limbs.armSpread}
-                        min={0}
-                        max={1}
-                        step={0.1}
-                        onChange={(v) => updateLimbs({ armSpread: v })}
-                      />
-                    </div>
+                      <div className="space-y-3 rounded-lg border border-gray-800 p-3">
+                        <div>
+                          <span className="text-xs text-gray-400 mb-1.5 block">Hand Style</span>
+                          <div className="flex flex-wrap gap-2">
+                            {HAND_STYLES.map(({ style, label }) => (
+                              <button
+                                key={`hand-${style}`}
+                                onClick={() => updateLimbs({ handStyle: style })}
+                                className={`px-3 py-1.5 rounded-lg border text-xs transition-all ${
+                                  limbs.handStyle === style
+                                    ? "border-blue-500 bg-blue-600/20 text-blue-400"
+                                    : "border-gray-700 bg-gray-800/50 text-gray-400 hover:text-white hover:border-gray-600"
+                                }`}
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-gray-400 w-20">Hand Color</span>
+                          <input
+                            type="color"
+                            value={limbs.handColor}
+                            onChange={(e) => updateLimbs({ handColor: e.target.value })}
+                            className="w-8 h-8 rounded cursor-pointer bg-transparent border border-gray-700"
+                          />
+                        </div>
+                      </div>
+                    </>
                   )}
 
                   {limbs.legStyle !== "none" && (
@@ -731,7 +1090,187 @@ export function CharacterBuilder({
                         />
                         <span className="text-xs text-gray-400">Show Feet</span>
                       </label>
+                      {limbs.feet && (
+                        <div className="space-y-3 rounded-lg border border-gray-800 p-3">
+                          <div>
+                            <span className="text-xs text-gray-400 mb-1.5 block">Shoe Style</span>
+                            <div className="flex flex-wrap gap-2">
+                              {SHOE_STYLES.map(({ style, label }) => (
+                                <button
+                                  key={`shoe-${style}`}
+                                  onClick={() => updateLimbs({ shoeStyle: style })}
+                                  className={`px-3 py-1.5 rounded-lg border text-xs transition-all ${
+                                    limbs.shoeStyle === style
+                                      ? "border-blue-500 bg-blue-600/20 text-blue-400"
+                                      : "border-gray-700 bg-gray-800/50 text-gray-400 hover:text-white hover:border-gray-600"
+                                  }`}
+                                >
+                                  {label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="flex items-center gap-3">
+                              <span className="text-xs text-gray-400 w-20">Shoe Color</span>
+                              <input
+                                type="color"
+                                value={limbs.shoeColor}
+                                onChange={(e) => updateLimbs({ shoeColor: e.target.value })}
+                                className="w-8 h-8 rounded cursor-pointer bg-transparent border border-gray-700"
+                              />
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className="text-xs text-gray-400 w-20">Sole Color</span>
+                              <input
+                                type="color"
+                                value={limbs.shoeSoleColor}
+                                onChange={(e) => updateLimbs({ shoeSoleColor: e.target.value })}
+                                className="w-8 h-8 rounded cursor-pointer bg-transparent border border-gray-700"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-xs text-gray-400 mb-1.5 block">Shoe Accessory</span>
+                            <div className="flex flex-wrap gap-2">
+                              {SHOE_ACCESSORY_STYLES.map(({ style, label }) => (
+                                <button
+                                  key={`shoe-accessory-${style}`}
+                                  onClick={() => updateLimbs({ shoeAccessory: style })}
+                                  className={`px-3 py-1.5 rounded-lg border text-xs transition-all ${
+                                    limbs.shoeAccessory === style
+                                      ? "border-blue-500 bg-blue-600/20 text-blue-400"
+                                      : "border-gray-700 bg-gray-800/50 text-gray-400 hover:text-white hover:border-gray-600"
+                                  }`}
+                                >
+                                  {label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs text-gray-400 w-20">Accessory Color</span>
+                            <input
+                              type="color"
+                              value={limbs.shoeAccessoryColor}
+                              onChange={(e) => updateLimbs({ shoeAccessoryColor: e.target.value })}
+                              className="w-8 h-8 rounded cursor-pointer bg-transparent border border-gray-700"
+                            />
+                          </div>
+                        </div>
+                      )}
                     </>
+                  )}
+                </>
+              )}
+            </div>
+          </Section>
+
+          {/* Accessories */}
+          <Section title="Accessories">
+            <div className="space-y-3">
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => addAccessory("hat")}
+                  className="px-3 py-1.5 rounded-lg border border-gray-700 bg-gray-800/50 text-xs text-gray-300 hover:text-white hover:border-gray-600 transition-all"
+                >
+                  <Plus className="w-3 h-3 inline mr-1" />
+                  Hat
+                </button>
+                <button
+                  onClick={() => addAccessory("glasses")}
+                  className="px-3 py-1.5 rounded-lg border border-gray-700 bg-gray-800/50 text-xs text-gray-300 hover:text-white hover:border-gray-600 transition-all"
+                >
+                  <Plus className="w-3 h-3 inline mr-1" />
+                  Glasses
+                </button>
+                <button
+                  onClick={() => addAccessory("prop")}
+                  className="px-3 py-1.5 rounded-lg border border-gray-700 bg-gray-800/50 text-xs text-gray-300 hover:text-white hover:border-gray-600 transition-all"
+                >
+                  <Plus className="w-3 h-3 inline mr-1" />
+                  Prop
+                </button>
+              </div>
+
+              {accessories.length === 0 ? (
+                <p className="text-xs text-gray-500">No accessories added.</p>
+              ) : (
+                <>
+                  <div className="flex flex-wrap gap-2">
+                    {accessories.map((acc) => (
+                      <button
+                        key={acc.id}
+                        onClick={() => setSelectedAccessoryId(acc.id)}
+                        className={`px-3 py-1.5 rounded-lg border text-xs transition-all ${
+                          selectedAccessoryId === acc.id
+                            ? "border-blue-500 bg-blue-600/20 text-blue-300"
+                            : "border-gray-700 bg-gray-800/50 text-gray-300 hover:text-white hover:border-gray-600"
+                        }`}
+                      >
+                        {acc.name}
+                      </button>
+                    ))}
+                  </div>
+
+                  {selectedAccessory && (
+                    <div className="space-y-3 rounded-lg border border-gray-800 p-3">
+                      <div className="flex items-center justify-between">
+                        <input
+                          value={selectedAccessory.name}
+                          onChange={(e) => updateAccessory(selectedAccessory.id, { name: e.target.value })}
+                          className="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        />
+                        <button
+                          onClick={() => removeAccessory(selectedAccessory.id)}
+                          className="p-1 rounded text-red-300 hover:text-red-200 hover:bg-red-900/30 transition-colors"
+                          title="Remove accessory"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <SliderField
+                          label="X Offset"
+                          value={selectedAccessory.x}
+                          min={-80}
+                          max={80}
+                          onChange={(v) => updateAccessory(selectedAccessory.id, { x: v })}
+                        />
+                        <SliderField
+                          label="Y Offset"
+                          value={selectedAccessory.y}
+                          min={-80}
+                          max={80}
+                          onChange={(v) => updateAccessory(selectedAccessory.id, { y: v })}
+                        />
+                        <SliderField
+                          label="Scale"
+                          value={selectedAccessory.scale}
+                          min={0.2}
+                          max={2}
+                          step={0.1}
+                          onChange={(v) => updateAccessory(selectedAccessory.id, { scale: v })}
+                        />
+                        <SliderField
+                          label="Rotation"
+                          value={selectedAccessory.rotation}
+                          min={-180}
+                          max={180}
+                          onChange={(v) => updateAccessory(selectedAccessory.id, { rotation: v })}
+                        />
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-gray-400 w-16">Color</span>
+                          <input
+                            type="color"
+                            value={selectedAccessory.color ?? "#444444"}
+                            onChange={(e) => updateAccessory(selectedAccessory.id, { color: e.target.value })}
+                            className="w-8 h-8 rounded cursor-pointer bg-transparent border border-gray-700"
+                          />
+                        </div>
+                      </div>
+                    </div>
                   )}
                 </>
               )}
@@ -740,7 +1279,7 @@ export function CharacterBuilder({
         </div>
 
         {/* Preview */}
-        <div className="lg:sticky lg:top-24">
+        <div className="lg:sticky lg:top-4 lg:self-start h-fit">
           <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
             <div className="px-4 py-2 border-b border-gray-800">
               <span className="text-xs font-medium text-gray-400">Preview</span>

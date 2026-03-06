@@ -12,6 +12,7 @@ import type {
   TextProps,
   FaceProps,
   LimbProps,
+  AccessoryProps,
   TimelineComposition,
 } from "@/engine/types";
 import { EMPTY_TIMELINE_COMPOSITION, ANIMATABLE_PROPERTIES, DEFAULT_FACE } from "@/engine/types";
@@ -101,8 +102,15 @@ interface EditorState {
   removeNodeById: (nodeId: string) => void;
   updateNodeTransform: (nodeId: string, transform: Partial<Transform>) => void;
   addShapeNodeWithFace: (name: string, shape: ShapeProps, face: FaceProps, transform?: Partial<Transform>) => string;
-  addCharacterNode: (name: string, shape: ShapeProps, face: FaceProps, limbs: LimbProps, transform?: Partial<Transform>) => string;
-  updateNodeProps: (nodeId: string, updates: Partial<Pick<SceneNode, "name" | "visible" | "locked" | "showLabel" | "layer" | "pivot" | "assetId" | "parallaxFactor" | "shape" | "text" | "face" | "faceKeyframes" | "limbs">>) => void;
+  addCharacterNode: (
+    name: string,
+    shape: ShapeProps,
+    face: FaceProps,
+    limbs: LimbProps,
+    accessories?: AccessoryProps[],
+    transform?: Partial<Transform>
+  ) => string;
+  updateNodeProps: (nodeId: string, updates: Partial<Pick<SceneNode, "name" | "visible" | "locked" | "showLabel" | "layer" | "pivot" | "assetId" | "parallaxFactor" | "shape" | "text" | "face" | "faceKeyframes" | "limbs" | "accessories">>) => void;
   reparentNodeTo: (nodeId: string, newParentId: string, index?: number) => void;
   reorderChildNode: (parentId: string, fromIndex: number, toIndex: number) => void;
   duplicateNodeById: (nodeId: string) => string | null;
@@ -331,11 +339,12 @@ export const useEditorStore = create<EditorState>()(
       return node.id;
     },
 
-    addCharacterNode: (name, shape, face, limbs, transform) => {
+    addCharacterNode: (name, shape, face, limbs, accessories, transform) => {
       const node = createNode(name, "shape" as NodeType, {
         shape,
         face,
         limbs,
+        accessories,
         transform: {
           x: 0,
           y: 0,

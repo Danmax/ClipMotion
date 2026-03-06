@@ -3,11 +3,136 @@
 import { useState } from "react";
 import Link from "next/link";
 import { MoreVertical, Trash2, Edit3 } from "lucide-react";
-import type { Project } from "@prisma/client";
+import type { SceneDocument, SceneNode } from "@/engine/types";
 
 interface ProjectCardProps {
-  project: Project;
+  project: {
+    id: string;
+    name: string;
+    fps: number;
+    updatedAt: Date | string;
+    thumbnail: string | null;
+    width: number;
+    height: number;
+    previewSceneData?: Record<string, unknown> | null;
+  };
   onDeleted?: () => void;
+}
+
+function toSceneDocument(data: Record<string, unknown> | null | undefined): SceneDocument | null {
+  if (!data || typeof data !== "object") return null;
+  const maybe = data as Partial<SceneDocument>;
+  if (!maybe.rootNodeId || !maybe.nodes || typeof maybe.nodes !== "object") return null;
+  return maybe as SceneDocument;
+}
+
+function getLayerOrder(node: SceneNode): number {
+  if (node.layer === "background") return 0;
+  if (node.layer === "foreground") return 2;
+  return 1;
+}
+
+function renderNodePreview(node: SceneNode, index: number, canvasWidth: number, canvasHeight: number) {
+  const xPct = ((node.transform.x + canvasWidth / 2) / canvasWidth) * 100;
+  const yPct = ((node.transform.y + canvasHeight / 2) / canvasHeight) * 100;
+  const scale = Math.max(0.1, Math.min(3, ((node.transform.scaleX ?? 1) + (node.transform.scaleY ?? 1)) / 2));
+  const opacity = Math.max(0, Math.min(1, node.transform.opacity ?? 1));
+  const rotation = node.transform.rotation ?? 0;
+  const z = getLayerOrder(node) * 100 + index;
+
+  if (node.type === "shape" && node.shape) {
+    const w = Math.max(6, node.shape.width * 0.18 * scale);
+    const h = Math.max(6, node.shape.height * 0.18 * scale);
+    const common = {
+      left: `${xPct}%`,
+      top: `${yPct}%`,
+      width: `${w}px`,
+      height: `${h}px`,
+      opacity,
+      transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
+      zIndex: z,
+      border: node.shape.stroke ? `1px solid ${node.shape.stroke}` : undefined,
+    } as const;
+
+    if (node.shape.shapeType === "ellipse") {
+      return <div key={node.id} className="absolute rounded-full" style={{ ...common, background: node.shape.fill }} />;
+    }
+
+    if (node.shape.shapeType === "triangle") {
+      return (
+        <div
+          key={node.id}
+          className="absolute"
+          style={{
+            left: `${xPct}%`,
+            top: `${yPct}%`,
+            width: 0,
+            height: 0,
+            zIndex: z,
+            opacity,
+            transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
+            borderLeft: `${Math.max(4, w / 2)}px solid transparent`,
+            borderRight: `${Math.max(4, w / 2)}px solid transparent`,
+            borderBottom: `${Math.max(6, h)}px solid ${node.shape.fill}`,
+          }}
+        />
+      );
+    }
+
+    return (
+      <div
+        key={node.id}
+        className="absolute rounded-sm"
+        style={{
+          ...common,
+          borderRadius: node.shape.shapeType === "rectangle" ? `${node.shape.cornerRadius ?? 2}px` : "6px",
+          background: node.shape.fill,
+        }}
+      />
+    );
+  }
+
+  if (node.type === "text" && node.text) {
+    const fontSize = Math.max(8, node.text.fontSize * 0.2 * scale);
+    return (
+      <div
+        key={node.id}
+        className="absolute whitespace-nowrap font-medium"
+        style={{
+          left: `${xPct}%`,
+          top: `${yPct}%`,
+          zIndex: z,
+          opacity,
+          color: node.text.fill,
+          fontSize: `${fontSize}px`,
+          transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
+          textShadow: "0 1px 1px rgba(0,0,0,0.35)",
+        }}
+      >
+        {node.text.content}
+      </div>
+    );
+  }
+
+  if (node.type === "sprite") {
+    return (
+      <div
+        key={node.id}
+        className="absolute rounded border border-white/25 bg-white/10"
+        style={{
+          left: `${xPct}%`,
+          top: `${yPct}%`,
+          width: `${Math.max(8, 28 * scale)}px`,
+          height: `${Math.max(8, 28 * scale)}px`,
+          zIndex: z,
+          opacity,
+          transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
+        }}
+      />
+    );
+  }
+
+  return null;
 }
 
 export function ProjectCard({ project, onDeleted }: ProjectCardProps) {
@@ -19,6 +144,10 @@ export function ProjectCard({ project, onDeleted }: ProjectCardProps) {
   const [newName, setNewName] = useState(project.name);
   const [newFps, setNewFps] = useState(project.fps);
   const [loading, setLoading] = useState(false);
+  const previewDoc = toSceneDocument(project.previewSceneData);
+  const previewNodes = previewDoc
+    ? Object.values(previewDoc.nodes).filter((node) => node.id !== previewDoc.rootNodeId && node.visible)
+    : [];
 
   const handleRename = async () => {
     if (!newName.trim() || newName === project.name) {
@@ -90,6 +219,13 @@ export function ProjectCard({ project, onDeleted }: ProjectCardProps) {
                 alt={project.name}
                 className="w-full h-full object-cover"
               />
+            ) : previewNodes.length > 0 ? (
+              <div className="relative w-full h-full overflow-hidden bg-gradient-to-b from-slate-700 via-slate-800 to-slate-900">
+                <div className="absolute inset-0 opacity-25 bg-[radial-gradient(circle_at_35%_25%,rgba(255,255,255,0.32),transparent_40%),radial-gradient(circle_at_65%_70%,rgba(56,189,248,0.24),transparent_45%)]" />
+                {previewNodes.map((node, index) =>
+                  renderNodePreview(node, index, project.width || 1920, project.height || 1080)
+                )}
+              </div>
             ) : (
               <div className="text-gray-600 text-sm">No preview</div>
             )}
@@ -240,7 +376,7 @@ export function ProjectCard({ project, onDeleted }: ProjectCardProps) {
           <div className="bg-gray-900 border border-gray-800 rounded-lg p-6 w-96 shadow-xl">
             <h2 className="text-lg font-medium text-white mb-2">Delete Project?</h2>
             <p className="text-sm text-gray-400 mb-6">
-              This will permanently delete "{project.name}" and all its scenes. This action cannot be undone.
+              This will permanently delete &quot;{project.name}&quot; and all its scenes. This action cannot be undone.
             </p>
             <div className="flex gap-2 justify-end">
               <button

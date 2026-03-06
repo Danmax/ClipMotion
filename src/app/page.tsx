@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Play, Layers, Clock, Download } from "lucide-react";
+import { Play, Layers, Clock, Download, Sparkles, ArrowRight } from "lucide-react";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 
@@ -75,50 +75,94 @@ export default async function Home() {
         </div>
       </header>
 
-      {/* Hero */}
       <main className="max-w-6xl mx-auto px-6">
-        <section className="py-24 text-center">
-          <h1 className="text-5xl sm:text-6xl font-bold tracking-tight mb-6">
-            Animate your stories.
-            <br />
-            <span className="text-blue-400">In 30 seconds.</span>
-          </h1>
-          <p className="text-lg text-gray-400 max-w-2xl mx-auto mb-10">
-            ClipMotion is a web-based animation studio for creating short animated clips.
-            Set keyframes, rig characters, and export professional-quality animations — all from your browser.
-          </p>
-          <div className="flex gap-4 justify-center">
-            {isLoggedIn ? (
-              <>
-                <Link
-                  href="/projects"
-                  className="px-6 py-3 rounded-xl bg-blue-600 text-base font-medium hover:bg-blue-500 transition-colors"
-                >
-                  Open Dashboard
-                </Link>
-                <Link
-                  href="/characters/new"
-                  className="px-6 py-3 rounded-xl bg-gray-800 text-base font-medium hover:bg-gray-700 transition-colors"
-                >
-                  Create Character
-                </Link>
-              </>
-            ) : (
-              <>
-                <Link
-                  href="/register"
-                  className="px-6 py-3 rounded-xl bg-blue-600 text-base font-medium hover:bg-blue-500 transition-colors"
-                >
-                  Start Animating - Free
-                </Link>
-                <Link
-                  href="/login"
-                  className="px-6 py-3 rounded-xl bg-gray-800 text-base font-medium hover:bg-gray-700 transition-colors"
-                >
-                  Sign In
-                </Link>
-              </>
-            )}
+        <section className="py-14 sm:py-20">
+          <div className="relative overflow-hidden rounded-3xl border border-[#263146] bg-gradient-to-b from-[#0f172a] via-[#0c162b] to-[#0a1120] p-6 sm:p-10">
+            <div className="absolute -top-20 -right-20 h-72 w-72 rounded-full bg-cyan-500/10 blur-3xl" />
+            <div className="absolute -bottom-16 -left-16 h-72 w-72 rounded-full bg-blue-500/10 blur-3xl" />
+
+            <div className="relative grid lg:grid-cols-[1.05fr_1fr] gap-10 items-center">
+              <div>
+                <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-200 mb-5">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Animation studio in your browser
+                </div>
+                <h1 className="text-4xl sm:text-6xl font-semibold tracking-tight leading-[1.05] mb-5">
+                  Build scroll-stopping
+                  <span className="block text-cyan-300">animated stories fast</span>
+                </h1>
+                <p className="text-[15px] sm:text-lg text-slate-300/90 max-w-xl mb-8">
+                  Create scenes, add characters, keyframe motion, and export in one flow.
+                  No desktop app required.
+                </p>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  {isLoggedIn ? (
+                    <>
+                      <Link
+                        href="/projects"
+                        className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-cyan-500 text-slate-950 text-sm sm:text-base font-semibold hover:bg-cyan-400 transition-colors"
+                      >
+                        Open Studio
+                        <ArrowRight className="w-4 h-4" />
+                      </Link>
+                      <Link
+                        href="/characters/new"
+                        className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-slate-700 bg-slate-900/70 text-white text-sm sm:text-base font-medium hover:bg-slate-800 transition-colors"
+                      >
+                        New Character
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      <Link
+                        href="/register"
+                        className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-cyan-500 text-slate-950 text-sm sm:text-base font-semibold hover:bg-cyan-400 transition-colors"
+                      >
+                        Start Free
+                        <ArrowRight className="w-4 h-4" />
+                      </Link>
+                      <Link
+                        href="/login"
+                        className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-slate-700 bg-slate-900/70 text-white text-sm sm:text-base font-medium hover:bg-slate-800 transition-colors"
+                      >
+                        Sign In
+                      </Link>
+                    </>
+                  )}
+                </div>
+
+                <p className="mt-4 text-xs text-slate-400">
+                  Free tier: 30-second timeline and 720p exports.
+                </p>
+              </div>
+
+              <div className="relative">
+                <div className="rounded-2xl border border-slate-700 bg-slate-900/80 p-3 shadow-2xl shadow-black/30">
+                  <div className="h-8 rounded-lg bg-slate-800 border border-slate-700 flex items-center px-3 gap-2 mb-3">
+                    <div className="w-2.5 h-2.5 rounded-full bg-red-400/80" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-yellow-400/80" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-green-400/80" />
+                    <div className="text-[11px] text-slate-400 ml-2">ClipMotion Editor</div>
+                  </div>
+                  <div className="aspect-[16/10] rounded-xl border border-slate-700 bg-[#d9dee6] p-4 relative overflow-hidden">
+                    <div className="absolute left-4 top-4 bottom-4 w-20 rounded-lg bg-[#101827] border border-[#1f2a3d]" />
+                    <div className="absolute right-4 top-4 bottom-24 left-28 rounded-lg bg-[#cfd6df] border border-[#bdc6d2] flex items-center justify-center">
+                      <div className="w-20 h-20 rounded-2xl bg-cyan-500/80" />
+                    </div>
+                    <div className="absolute right-4 bottom-4 left-28 h-16 rounded-lg bg-white/80 border border-[#d0d7e2] flex items-center px-3 gap-2">
+                      <div className="w-5 h-5 rounded-full bg-slate-300" />
+                      <div className="h-1.5 flex-1 rounded-full bg-slate-300/70" />
+                      <div className="w-8 h-5 rounded bg-cyan-500/50" />
+                    </div>
+                  </div>
+                </div>
+                <div className="hidden sm:flex absolute -left-6 -bottom-6 rounded-xl border border-cyan-300/30 bg-cyan-500/10 backdrop-blur px-3 py-2 text-xs text-cyan-100 items-center gap-2">
+                  <Play className="w-3.5 h-3.5" />
+                  Live timeline preview
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -164,18 +208,6 @@ export default async function Home() {
             )}
           </section>
         )}
-
-        {/* Editor Preview */}
-        <section className="pb-20">
-          <div className="rounded-2xl border border-gray-800 bg-gray-900 overflow-hidden aspect-video flex items-center justify-center">
-            <div className="text-center">
-              <div className="w-16 h-16 rounded-2xl bg-blue-600/20 flex items-center justify-center mx-auto mb-4">
-                <Play className="w-8 h-8 text-blue-400" />
-              </div>
-              <p className="text-gray-500">Editor preview</p>
-            </div>
-          </div>
-        </section>
 
         {/* Features */}
         <section className="py-20 border-t border-gray-800/50">

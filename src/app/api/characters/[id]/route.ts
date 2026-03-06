@@ -8,6 +8,9 @@ const updateCharacterSchema = z.object({
   shapeData: z.string().min(2).optional(),
   faceData: z.string().min(2).optional(),
   limbsData: z.string().min(2).nullable().optional(),
+  accessoriesData: z.string().min(2).nullable().optional(),
+  sourceImageUrl: z.string().max(1000).nullable().optional(),
+  digitizationMeta: z.string().min(2).nullable().optional(),
 });
 
 export async function PATCH(

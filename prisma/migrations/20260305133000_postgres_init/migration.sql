@@ -74,7 +74,7 @@ CREATE TABLE "scenes" (
     "projectId" TEXT NOT NULL,
     "name" TEXT NOT NULL DEFAULT 'Scene 1',
     "order" INTEGER NOT NULL DEFAULT 0,
-    "data" TEXT NOT NULL,
+    "data" TEXT NOT NULL DEFAULT '{}',
     "durationMs" INTEGER NOT NULL DEFAULT 3000,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
