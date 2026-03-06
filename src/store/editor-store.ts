@@ -34,7 +34,7 @@ import {
   moveKeyframe,
   updateKeyframeEasing,
 } from "@/engine/keyframe-engine";
-import { deserializeScene } from "@/engine/serialization";
+import { tryDeserializeScene } from "@/engine/serialization";
 import {
   createSingleClipComposition,
   createCompositionFromScenes,
@@ -161,12 +161,50 @@ interface EditorState {
   markClean: () => void;
 }
 
-function tryDeserializeSceneData(data: unknown): SceneDocument {
-  try {
-    return deserializeScene(data);
-  } catch {
-    return createSceneDocument();
+const DEBUG_EDITOR =
+  typeof window !== "undefined" && process.env.NEXT_PUBLIC_DEBUG_EDITOR === "1";
+
+function unwrapSceneCandidate(data: unknown): unknown {
+  let candidate: unknown = data;
+
+  // Legacy rows can be double-encoded JSON strings.
+  for (let i = 0; i < 3; i += 1) {
+    if (typeof candidate !== "string") break;
+    try {
+      candidate = JSON.parse(candidate);
+    } catch {
+      break;
+    }
   }
+
+  if (candidate && typeof candidate === "object") {
+    const record = candidate as Record<string, unknown>;
+    if (record.document) return unwrapSceneCandidate(record.document);
+    if (record.scene) return unwrapSceneCandidate(record.scene);
+    if (record.data) return unwrapSceneCandidate(record.data);
+  }
+
+  return candidate;
+}
+
+function tryDeserializeSceneData(data: unknown): SceneDocument {
+  const unwrapped = unwrapSceneCandidate(data);
+  const parsed = tryDeserializeScene(unwrapped);
+  if (parsed) {
+    if (DEBUG_EDITOR) {
+      const root = parsed.nodes[parsed.rootNodeId];
+      console.log("[editor/store] scene deserialized", {
+        nodeCount: Object.keys(parsed.nodes).length,
+        animationCount: Object.keys(parsed.animations).length,
+        rootChildren: root?.childIds?.length ?? 0,
+      });
+    }
+    return parsed;
+  }
+  if (process.env.NODE_ENV !== "production") {
+    console.warn("Failed to deserialize scene data; falling back to empty scene", unwrapped);
+  }
+  return createSceneDocument();
 }
 
 function applyDocumentToActiveScene(
@@ -292,6 +330,17 @@ export const useEditorStore = create<EditorState>()(
         state.timelineComposition = timeline;
         state.dirty = false;
       });
+
+      if (DEBUG_EDITOR) {
+        console.log("[editor/store] loadProject applied", {
+          projectId: params.projectId,
+          scenes: sceneEntries.length,
+          activeSceneId,
+          projectDurationMs: params.durationMs,
+          timelineDurationMs,
+          timelineClips: timeline.clips.length,
+        });
+      }
     },
 
     setActiveScene: (sceneId) => {

@@ -5,6 +5,9 @@ import { useEditorStore } from "@/store/editor-store";
 import { serializeScene } from "@/engine/serialization";
 import { AUTOSAVE_DEBOUNCE_MS } from "@/lib/constants";
 
+const DEBUG_EDITOR =
+  typeof window !== "undefined" && process.env.NEXT_PUBLIC_DEBUG_EDITOR === "1";
+
 /**
  * Autosave hook: debounces scene changes and PATCHes the API.
  * Only saves when the document is dirty.
@@ -33,6 +36,15 @@ export function useAutosave() {
     savingRef.current = true;
     setSaving(true);
     try {
+      if (DEBUG_EDITOR) {
+        console.log("[editor/autosave] begin", {
+          projectId,
+          sceneId,
+          dirty,
+          version,
+          sceneOrderLength: sceneOrder.length,
+        });
+      }
       const serializedScenes = sceneOrder
         .map((id, index) => {
           const scene = scenes[id];
@@ -66,6 +78,12 @@ export function useAutosave() {
         const details = await sceneRes.text().catch(() => "");
         console.error("Autosave scenes PATCH failed:", sceneRes.status, details);
         return false;
+      }
+      if (DEBUG_EDITOR) {
+        console.log("[editor/autosave] scenes patch ok", {
+          status: sceneRes.status,
+          serializedScenes: serializedScenes.length,
+        });
       }
 
       const patchProject = async (v: number) =>
@@ -115,6 +133,12 @@ export function useAutosave() {
           setVersion(updatedProject.version);
         }
         markClean();
+        if (DEBUG_EDITOR) {
+          console.log("[editor/autosave] project patch ok", {
+            status: projectRes.status,
+            nextVersion: updatedProject.version,
+          });
+        }
         return true;
       }
 

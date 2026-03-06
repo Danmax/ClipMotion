@@ -5,6 +5,7 @@ import { Panel, Group, Separator } from "react-resizable-panels";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useEditorStore } from "@/store/editor-store";
 import { useUIStore } from "@/store/ui-store";
+import { usePlaybackStore } from "@/store/playback-store";
 import { usePlayback } from "@/hooks/use-playback";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { useAutosave } from "@/hooks/use-autosave";
@@ -39,10 +40,15 @@ interface EditorShellProps {
 
 export function EditorShell({ project, scenes }: EditorShellProps) {
   const loadProject = useEditorStore((s) => s.loadProject);
+  const sceneId = useEditorStore((s) => s.sceneId);
+  const document = useEditorStore((s) => s.document);
+  const scenesById = useEditorStore((s) => s.scenes);
+  const setActiveScene = useEditorStore((s) => s.setActiveScene);
   const showSceneTree = useUIStore((s) => s.showSceneTree);
   const showProperties = useUIStore((s) => s.showProperties);
   const showAssetLibrary = useUIStore((s) => s.showAssetLibrary);
   const setCanvasZoom = useUIStore((s) => s.setCanvasZoom);
+  const stopPlayback = usePlaybackStore((s) => s.stop);
   const [settingsOpen, setSettingsOpen] = useState(true);
   const [stuffOpen, setStuffOpen] = useState(true);
 
@@ -64,8 +70,20 @@ export function EditorShell({ project, scenes }: EditorShellProps) {
       scenes,
       timelineData: project.timelineData ?? null,
     });
+    stopPlayback();
     setCanvasZoom(1);
-  }, [project, scenes, loadProject, setCanvasZoom]);
+  }, [project, scenes, loadProject, stopPlayback, setCanvasZoom]);
+
+  // Guard against hydration/timing races where scene metadata is loaded
+  // but the active document remains stale until a manual refresh.
+  useEffect(() => {
+    if (!sceneId) return;
+    const activeScene = scenesById[sceneId];
+    if (!activeScene) return;
+    if (activeScene.document !== document) {
+      setActiveScene(sceneId);
+    }
+  }, [sceneId, scenesById, document, setActiveScene]);
 
   const hasRightPanel = showProperties || showAssetLibrary;
 
@@ -110,7 +128,7 @@ export function EditorShell({ project, scenes }: EditorShellProps) {
               >
                 <div className="w-full h-full bg-[#e7ebef] flex items-center justify-center px-4 py-3">
                   <div className="relative w-[88%] max-w-[1280px] h-full min-h-0">
-                    <CanvasViewport />
+                    <CanvasViewport key={`canvas-${project.id}`} />
                   </div>
                 </div>
               </Panel>

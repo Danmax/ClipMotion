@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Undo2, Redo2, Save, Download } from "lucide-react";
+import { Undo2, Redo2, Save, Download, RefreshCw } from "lucide-react";
 import { useEditorStore } from "@/store/editor-store";
 import { useHistoryStore } from "@/store/history-store";
 import { usePlaybackStore } from "@/store/playback-store";
@@ -201,6 +201,13 @@ export function MenuBar({ onSave, saving }: MenuBarProps) {
         title="Save (Ctrl+S)"
       >
         <Save className="w-4 h-4" />
+      </button>
+      <button
+        onClick={() => window.location.reload()}
+        className="p-1.5 rounded text-gray-500 hover:text-gray-900 hover:bg-white transition-colors"
+        title="Reload page"
+      >
+        <RefreshCw className="w-4 h-4" />
       </button>
 
       <div className="w-px h-6 bg-[#d9e0e8] mx-1" />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useCallback, useState } from "react";
+import { useRef, useEffect, useCallback, useState, useReducer } from "react";
 import { Application, Container, Graphics, Text, TextStyle, FederatedPointerEvent } from "pixi.js";
 import { useEditorStore } from "@/store/editor-store";
 import { usePlaybackStore } from "@/store/playback-store";
@@ -13,6 +13,8 @@ import type { SceneNode } from "@/engine/types";
 const ZOOM_PRESETS = [1.2, 1, 0.8, 0.5] as const;
 const MIN_CANVAS_ZOOM = 0.5;
 const MAX_CANVAS_ZOOM = 1.2;
+const DEBUG_EDITOR =
+  typeof window !== "undefined" && process.env.NEXT_PUBLIC_DEBUG_EDITOR === "1";
 
 function clampCanvasZoom(zoom: number): number {
   return Math.max(MIN_CANVAS_ZOOM, Math.min(MAX_CANVAS_ZOOM, zoom));
@@ -31,6 +33,7 @@ export function CanvasViewport() {
   const appRef = useRef<Application | null>(null);
   const sceneContainerRef = useRef<Container | null>(null);
   const [canvasReady, setCanvasReady] = useState(false);
+  const [renderKey, forceRender] = useReducer((x: number) => x + 1, 0);
   const [penPoints, setPenPoints] = useState<Array<{ x: number; y: number }>>([]);
   const [showZoomPane, setShowZoomPane] = useState(true);
   const canvasZoomRef = useRef(1);
@@ -308,6 +311,16 @@ export function CanvasViewport() {
     const rootNode = document.nodes[document.rootNodeId];
     if (!rootNode) return;
 
+    if (DEBUG_EDITOR) {
+      console.log("[editor/canvas] render tick", {
+        currentTimeMs,
+        rootNodeId: document.rootNodeId,
+        totalNodes: Object.keys(document.nodes).length,
+        rootChildren: rootNode.childIds.length,
+        selectedCount: selectedNodeIds.size,
+      });
+    }
+
     // Helper to get layer sort order
     const layerOrder = (nodeId: string): number => {
       const node = document.nodes[nodeId];
@@ -425,7 +438,7 @@ export function CanvasViewport() {
 
       container.addChild(guide);
     }
-  }, [canvasReady, document, currentTimeMs, durationMs, selectedNodeIds, selectNode, activeTool, penPoints]);
+  }, [canvasReady, renderKey, document, currentTimeMs, durationMs, selectedNodeIds, selectNode, activeTool, penPoints]);
 
   // Zoom with mouse wheel
   const handleWheel = useCallback(
@@ -460,6 +473,18 @@ export function CanvasViewport() {
             : "Pen: click to place points. Need at least 3 points."}
         </div>
       )}
+      <button
+        type="button"
+        onClick={forceRender}
+        className="absolute top-3 right-3 bg-white/90 border border-[#d5dde8] rounded-lg shadow-sm px-2 py-1 text-[11px] text-gray-600 hover:bg-white hover:text-gray-900 transition-colors flex items-center gap-1"
+        title="Reload canvas"
+      >
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M1 1v5h5" />
+          <path d="M3.5 10a5.5 5.5 0 1 0 1-7.5L1 6" />
+        </svg>
+        Reload
+      </button>
       {showZoomPane ? (
         <div className="absolute bottom-3 right-3 bg-white/90 border border-[#d5dde8] rounded-lg shadow-sm px-2 py-1.5">
           <div className="flex items-center justify-between gap-2">

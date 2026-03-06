@@ -26,12 +26,12 @@ const nodeAnimationSchema = z.object({
 });
 
 const transformSchema = z.object({
-  x: z.number(),
-  y: z.number(),
-  rotation: z.number(),
-  scaleX: z.number(),
-  scaleY: z.number(),
-  opacity: z.number().min(0).max(1),
+  x: z.number().catch(0),
+  y: z.number().catch(0),
+  rotation: z.number().catch(0),
+  scaleX: z.number().catch(1),
+  scaleY: z.number().catch(1),
+  opacity: z.number().catch(1),
 });
 
 const shapePropsSchema = z.object({
@@ -49,10 +49,10 @@ const shapePropsSchema = z.object({
     "blob",
     "asymmetric-blob",
     "stickfigure",
-  ]),
-  width: z.number(),
-  height: z.number(),
-  fill: z.string(),
+  ]).catch("rectangle"),
+  width: z.number().catch(100),
+  height: z.number().catch(100),
+  fill: z.string().catch("#58a6ff"),
   stroke: z.string().optional(),
   strokeWidth: z.number().optional(),
   cornerRadius: z.number().optional(),
@@ -97,7 +97,7 @@ const facePropsSchema = z.object({
     "smug",
     "scared",
     "dead",
-  ]),
+  ]).catch("neutral"),
   eyeStyle: z.enum([
     "dot",
     "circle",
@@ -121,12 +121,12 @@ const facePropsSchema = z.object({
     "side-eye",
     "tiny",
     "half-lidded",
-  ]),
-  eyeSize: z.number(),
-  eyeSpacing: z.number(),
-  eyeOffsetY: z.number(),
-  eyeColor: z.string(),
-  pupilSize: z.number(),
+  ]).catch("dot"),
+  eyeSize: z.number().catch(1.0),
+  eyeSpacing: z.number().catch(1.0),
+  eyeOffsetY: z.number().catch(-0.1),
+  eyeColor: z.string().catch("#000000"),
+  pupilSize: z.number().catch(0.5),
   mouthStyle: z.enum([
     "smile",
     "frown",
@@ -144,11 +144,11 @@ const facePropsSchema = z.object({
     "smirk-open",
     "shout",
     "grimace",
-  ]),
-  mouthSize: z.number(),
-  mouthOffsetY: z.number(),
-  mouthColor: z.string(),
-  mouthCurve: z.number(),
+  ]).catch("line"),
+  mouthSize: z.number().catch(1.0),
+  mouthOffsetY: z.number().catch(0.15),
+  mouthColor: z.string().catch("#000000"),
+  mouthCurve: z.number().catch(0),
   mouthEffect: z.enum(["none", "talk"]).default("none"),
   mouthTalkSpeed: z.number().default(6),
   mouthTalkAmount: z.number().default(0.4),
@@ -157,7 +157,7 @@ const facePropsSchema = z.object({
   eyebrowThickness: z.number().default(2),
   eyebrowOffsetY: z.number().default(-0.22),
   eyebrowTilt: z.number().default(0),
-  faceScale: z.number(),
+  faceScale: z.number().catch(1.0),
 });
 
 const faceKeyframeSchema = z.object({
@@ -167,16 +167,16 @@ const faceKeyframeSchema = z.object({
 });
 
 const limbPropsSchema = z.object({
-  armStyle: z.enum(["straight", "bent", "none"]),
-  legStyle: z.enum(["straight", "bent", "none"]),
-  limbColor: z.string(),
-  limbThickness: z.number(),
-  armLength: z.number(),
-  legLength: z.number(),
-  armSpread: z.number(),
+  armStyle: z.enum(["straight", "bent", "none"]).catch("bent"),
+  legStyle: z.enum(["straight", "bent", "none"]).catch("straight"),
+  limbColor: z.string().catch("#000000"),
+  limbThickness: z.number().catch(3),
+  armLength: z.number().catch(0.8),
+  legLength: z.number().catch(0.9),
+  armSpread: z.number().catch(0.5),
   armRotationDeg: z.number().default(0),
-  legSpread: z.number(),
-  feet: z.boolean(),
+  legSpread: z.number().catch(0.3),
+  feet: z.boolean().catch(true),
   shoeStyle: z.enum(["kicks", "dress", "boots", "slides", "cool"]).default("kicks"),
   shoeColor: z.string().default("#111111"),
   shoeSoleColor: z.string().default("#f2f4f7"),
@@ -247,7 +247,7 @@ const sceneNodeSchema = z.object({
 });
 
 const sceneDocumentSchema = z.object({
-  version: z.literal(1),
+  version: z.number().optional().default(1),
   rootNodeId: z.string(),
   nodes: z.record(z.string(), sceneNodeSchema),
   animations: z.record(z.string(), nodeAnimationSchema).default({}),
@@ -276,7 +276,14 @@ export function deserializeScene(data: unknown): SceneDocument {
  */
 export function tryDeserializeScene(data: unknown): SceneDocument | null {
   const result = sceneDocumentSchema.safeParse(data);
-  return result.success ? (result.data as SceneDocument) : null;
+  if (result.success) return result.data as SceneDocument;
+  if (process.env.NODE_ENV !== "production") {
+    console.error(
+      "[serialization] Scene deserialization failed. Zod errors:",
+      result.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`),
+    );
+  }
+  return null;
 }
 
 /**

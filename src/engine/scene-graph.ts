@@ -42,6 +42,7 @@ export function createNode(
   type: NodeType,
   overrides?: Partial<SceneNode>
 ): SceneNode {
+  const { transform: overrideTransform, ...rest } = overrides ?? {};
   return {
     id: nanoid(),
     name,
@@ -52,9 +53,9 @@ export function createNode(
     locked: false,
     showLabel: false,
     layer: "normal",
-    transform: { ...DEFAULT_TRANSFORM },
     pivot: { x: 0.5, y: 0.5 },
-    ...overrides,
+    ...rest,
+    transform: { ...DEFAULT_TRANSFORM, ...overrideTransform },
   };
 }
 
