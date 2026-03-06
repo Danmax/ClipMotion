@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useCallback, useMemo, useState } from "react";
+import { useRef, useCallback, useMemo, useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight, Trash2, Diamond, WandSparkles, Play, Pause, Square } from "lucide-react";
 import { useEditorStore } from "@/store/editor-store";
 import { usePlaybackStore } from "@/store/playback-store";
@@ -17,6 +17,14 @@ interface ContextMenu {
   nodeId: string;
   property: AnimatableProperty;
   keyframeId: string;
+  easing: EasingDefinition;
+}
+
+interface DraggingKeyframe {
+  nodeId: string;
+  property: AnimatableProperty;
+  keyframeId: string;
+  value: number;
   easing: EasingDefinition;
 }
 
@@ -46,6 +54,7 @@ export function TimelinePanel() {
   const durationMs = useEditorStore((s) => s.durationMs);
   const setKeyframeAt = useEditorStore((s) => s.setKeyframeAt);
   const removeKeyframeById = useEditorStore((s) => s.removeKeyframeById);
+  const moveKeyframeTo = useEditorStore((s) => s.moveKeyframeTo);
   const updateKeyframeEasingById = useEditorStore((s) => s.updateKeyframeEasingById);
   const fillInbetweenKeyframes = useEditorStore((s) => s.fillInbetweenKeyframes);
   const currentTimeMs = usePlaybackStore((s) => s.currentTimeMs);
@@ -60,7 +69,9 @@ export function TimelinePanel() {
 
   const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null);
   const [fillStepFrames, setFillStepFrames] = useState(1);
+  const [draggingKeyframe, setDraggingKeyframe] = useState<DraggingKeyframe | null>(null);
   const rulerRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   // Total width in pixels
   const totalWidth = (durationMs / 1000) * timelineZoom;
@@ -211,6 +222,49 @@ export function TimelinePanel() {
     });
   }
 
+  useEffect(() => {
+    if (!draggingKeyframe) return;
+
+    const onMouseMove = (e: MouseEvent) => {
+      const scrollEl = scrollAreaRef.current;
+      if (!scrollEl) return;
+      const rect = scrollEl.getBoundingClientRect();
+      const x = e.clientX - rect.left + scrollEl.scrollLeft;
+      const unclampedMs = (x / timelineZoom) * 1000;
+      const clampedMs = Math.max(0, Math.min(durationMs, unclampedMs));
+      const frame = msToFrame(clampedMs, fps);
+      const snappedMs = frameToMs(frame, fps);
+
+      moveKeyframeTo(
+        draggingKeyframe.nodeId,
+        draggingKeyframe.property,
+        draggingKeyframe.keyframeId,
+        snappedMs
+      );
+      setCurrentTime(snappedMs);
+      setSelectedKeyframe({
+        nodeId: draggingKeyframe.nodeId,
+        property: draggingKeyframe.property,
+        keyframeId: draggingKeyframe.keyframeId,
+        timeMs: snappedMs,
+        value: draggingKeyframe.value,
+        easing: draggingKeyframe.easing,
+      });
+    };
+
+    const onMouseUp = () => {
+      setDraggingKeyframe(null);
+    };
+
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+  }, [draggingKeyframe, durationMs, fps, moveKeyframeTo, setCurrentTime, setSelectedKeyframe, timelineZoom]);
+
   return (
     <div
       className="h-full flex flex-col bg-[#f8fafc] border-t border-[#e2e8f0]"
@@ -321,7 +375,7 @@ export function TimelinePanel() {
         </div>
 
         {/* Keyframe area (right, scrollable) */}
-        <div className="flex-1 overflow-x-auto overflow-y-auto">
+        <div ref={scrollAreaRef} className="flex-1 overflow-x-auto overflow-y-auto">
           <div style={{ width: totalWidth, minWidth: "100%" }}>
             {/* Ruler */}
             <div
@@ -405,6 +459,27 @@ export function TimelinePanel() {
                             className="absolute top-1/2 -translate-y-1/2 -translate-x-1.5 z-[5]"
                             style={{ left: x }}
                             title={`${prop}: ${Math.round(kf.value * 100) / 100} @ ${formatTimecode(kf.timeMs, fps)}`}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              selectNode(node.id);
+                              setCurrentTime(kf.timeMs);
+                              setSelectedKeyframe({
+                                nodeId: node.id,
+                                property: prop as AnimatableProperty,
+                                keyframeId: kf.id,
+                                timeMs: kf.timeMs,
+                                value: kf.value,
+                                easing: kf.easing,
+                              });
+                              setDraggingKeyframe({
+                                nodeId: node.id,
+                                property: prop as AnimatableProperty,
+                                keyframeId: kf.id,
+                                value: kf.value,
+                                easing: kf.easing,
+                              });
+                            }}
                             onClick={(e) => {
                               e.stopPropagation();
                               selectNode(node.id);

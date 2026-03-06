@@ -12,6 +12,7 @@ const createProjectSchema = z.object({
   fps: z.number().int().refine((v) => [12, 16, 24, 30, 60].includes(v)).optional(),
   width: z.number().int().min(320).max(3840).optional(),
   height: z.number().int().min(240).max(2160).optional(),
+  isPublic: z.boolean().optional(),
 });
 
 export async function GET() {
@@ -58,7 +59,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { name, fps, width, height } = parsed.data;
+    const { name, fps, width, height, isPublic } = parsed.data;
 
     const project = await db.project.create({
       data: {
@@ -67,6 +68,7 @@ export async function POST(req: Request) {
         fps: fps ?? DEFAULT_FPS,
         width: width ?? DEFAULT_CANVAS_WIDTH,
         height: height ?? DEFAULT_CANVAS_HEIGHT,
+        isPublic: isPublic ?? false,
         durationMs: DEFAULT_PROJECT_DURATION_MS,
         scenes: {
           create: {

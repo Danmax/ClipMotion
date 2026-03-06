@@ -13,7 +13,7 @@ interface EditCharacterPageProps {
 export default async function EditCharacterPage({ params }: EditCharacterPageProps) {
   const { id } = await params;
   const session = await auth();
-  if (!session?.user?.id) redirect("/login");
+  if (!session?.user?.id) redirect("/sign-in");
 
   const character = await db.character.findFirst({
     where: { id, userId: session.user.id },

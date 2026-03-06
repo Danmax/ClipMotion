@@ -824,6 +824,8 @@ export function AssetLibraryPanel() {
   const [includeMidLayer, setIncludeMidLayer] = useState(true);
   const [includeFgLayer, setIncludeFgLayer] = useState(true);
   const [storyPrompt, setStoryPrompt] = useState("");
+  const [storyHeroCharacterId, setStoryHeroCharacterId] = useState("");
+  const [storyPartnerCharacterId, setStoryPartnerCharacterId] = useState("");
   const [storyStatus, setStoryStatus] = useState<string | null>(null);
   const [isGeneratingStory, setIsGeneratingStory] = useState(false);
 
@@ -843,6 +845,19 @@ export function AssetLibraryPanel() {
       .then((data) => setUserCharacters(data))
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (userCharacters.length === 0) return;
+
+    setStoryHeroCharacterId((prev) => {
+      if (prev && userCharacters.some((char) => char.id === prev)) return prev;
+      return userCharacters[0]?.id ?? "";
+    });
+    setStoryPartnerCharacterId((prev) => {
+      if (prev && userCharacters.some((char) => char.id === prev)) return prev;
+      return userCharacters[1]?.id ?? userCharacters[0]?.id ?? "";
+    });
+  }, [userCharacters]);
 
   const handleAddAsset = (asset: BuiltinAsset) => {
     const pos = nextSpawnPos();
@@ -991,6 +1006,44 @@ export function AssetLibraryPanel() {
     return nodeId;
   };
 
+  const toStoryCharacterOverride = (
+    char: UserCharacter
+  ): Pick<StoryNodePlan, "name" | "shape" | "face" | "limbs" | "accessories"> | null => {
+    try {
+      const shape = JSON.parse(char.shapeData) as ShapeProps;
+      const face = JSON.parse(char.faceData) as FaceProps;
+      const limbs = char.limbsData
+        ? (() => {
+            const parsed = JSON.parse(char.limbsData) as Omit<Partial<LimbProps>, "handStyle"> & {
+              handStyle?: unknown;
+            };
+            const rawHandStyle = typeof parsed.handStyle === "string" ? parsed.handStyle : undefined;
+            const handStyle =
+              rawHandStyle === "yes"
+                ? "thumbs-up"
+                : rawHandStyle === "no"
+                  ? "thumbs-down"
+                  : rawHandStyle;
+            return {
+              ...DEFAULT_LIMBS,
+              ...parsed,
+              handStyle: (handStyle as LimbProps["handStyle"]) ?? DEFAULT_LIMBS.handStyle,
+            } satisfies LimbProps;
+          })()
+        : undefined;
+      const accessories = char.accessoriesData ? (JSON.parse(char.accessoriesData) as AccessoryProps[]) : undefined;
+      return {
+        name: char.name,
+        shape,
+        face,
+        limbs,
+        accessories,
+      };
+    } catch {
+      return null;
+    }
+  };
+
   const handleAddBackground = (bg: SceneBackground) => {
     clearAutoSceneNodes();
 
@@ -1121,6 +1174,20 @@ export function AssetLibraryPanel() {
         durationMs,
       });
 
+      const selectedHero = userCharacters.find((char) => char.id === storyHeroCharacterId);
+      const selectedPartner = userCharacters.find((char) => char.id === storyPartnerCharacterId);
+      const heroOverride = selectedHero ? toStoryCharacterOverride(selectedHero) : null;
+      const partnerOverride = selectedPartner ? toStoryCharacterOverride(selectedPartner) : null;
+      const resolvedNodes = plan.nodes.map((node) => {
+        if (node.id === "hero" && heroOverride) {
+          return { ...node, ...heroOverride };
+        }
+        if (node.id === "partner" && partnerOverride) {
+          return { ...node, ...partnerOverride };
+        }
+        return node;
+      });
+
       clearAutoSceneNodes();
 
       for (const layer of plan.layers) {
@@ -1129,7 +1196,7 @@ export function AssetLibraryPanel() {
       }
 
       let firstNodeId: string | null = null;
-      for (const node of plan.nodes) {
+      for (const node of resolvedNodes) {
         if (!shouldIncludeTargetLayer(node.layer)) continue;
         const nodeId = applyStoryNode(plan.id, node);
         if (!firstNodeId) firstNodeId = nodeId;
@@ -1157,6 +1224,38 @@ export function AssetLibraryPanel() {
             <h3 className="text-xs font-medium text-gray-500">AI Story Prompt</h3>
             <span className="text-[10px] text-gray-600">Prompt to Scene Action</span>
           </div>
+          {userCharacters.length > 0 && (
+            <div className="grid grid-cols-2 gap-2 mb-2">
+              <label className="text-[10px] text-gray-500">
+                Lead Character
+                <select
+                  value={storyHeroCharacterId}
+                  onChange={(e) => setStoryHeroCharacterId(e.target.value)}
+                  className="mt-1 w-full rounded-md border border-gray-700 bg-gray-900/70 px-2 py-1.5 text-xs text-gray-200 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                >
+                  {userCharacters.map((char) => (
+                    <option key={char.id} value={char.id}>
+                      {char.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="text-[10px] text-gray-500">
+                Support Character
+                <select
+                  value={storyPartnerCharacterId}
+                  onChange={(e) => setStoryPartnerCharacterId(e.target.value)}
+                  className="mt-1 w-full rounded-md border border-gray-700 bg-gray-900/70 px-2 py-1.5 text-xs text-gray-200 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                >
+                  {userCharacters.map((char) => (
+                    <option key={char.id} value={char.id}>
+                      {char.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          )}
           <textarea
             value={storyPrompt}
             onChange={(e) => setStoryPrompt(e.target.value)}

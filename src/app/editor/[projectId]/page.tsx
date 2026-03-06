@@ -10,7 +10,7 @@ interface EditorPageProps {
 export default async function EditorPage({ params }: EditorPageProps) {
   const { projectId } = await params;
   const session = await auth();
-  if (!session?.user?.id) redirect("/login");
+  if (!session?.user?.id) redirect("/sign-in");
 
   const project = await db.project.findFirst({
     where: { id: projectId, userId: session.user.id },

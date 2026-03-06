@@ -11,6 +11,7 @@ const updateProjectSchema = z.object({
     .refine((v) => [12, 16, 24, 30, 60].includes(v))
     .optional(),
   timelineData: z.record(z.string(), z.unknown()).optional(),
+  isPublic: z.boolean().optional(),
   version: z.number().int().optional(),
 });
 
@@ -20,12 +21,13 @@ export async function GET(
 ) {
   const { projectId } = await params;
   const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   const project = await db.project.findFirst({
-    where: { id: projectId, userId: session.user.id },
+    where: {
+      id: projectId,
+      ...(session?.user?.id
+        ? { OR: [{ userId: session.user.id }, { isPublic: true }] }
+        : { isPublic: true }),
+    },
     include: { scenes: { orderBy: { order: "asc" } } },
   });
 
@@ -82,6 +84,7 @@ export async function PATCH(
       ...(parsed.data.timelineData && {
         timelineData: JSON.stringify(parsed.data.timelineData),
       }),
+      ...(parsed.data.isPublic !== undefined && { isPublic: parsed.data.isPublic }),
       version: { increment: 1 },
     },
   });

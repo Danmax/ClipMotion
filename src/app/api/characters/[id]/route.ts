@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 
 const updateCharacterSchema = z.object({
   name: z.string().min(1).max(100).optional(),
+  isPublic: z.boolean().optional(),
   shapeData: z.string().min(2).optional(),
   faceData: z.string().min(2).optional(),
   limbsData: z.string().min(2).nullable().optional(),
@@ -42,6 +43,29 @@ export async function PATCH(
     where: { id },
     data: parsed.data,
   });
+
+  return NextResponse.json(character);
+}
+
+export async function GET(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth();
+  const { id } = await params;
+
+  const character = await db.character.findFirst({
+    where: {
+      id,
+      ...(session?.user?.id
+        ? { OR: [{ userId: session.user.id }, { isPublic: true }] }
+        : { isPublic: true }),
+    },
+  });
+
+  if (!character) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
   return NextResponse.json(character);
 }

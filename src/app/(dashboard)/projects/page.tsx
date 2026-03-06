@@ -33,6 +33,7 @@ export default async function ProjectsPage() {
     return {
       id: project.id,
       name: project.name,
+      isPublic: project.isPublic,
       fps: project.fps,
       updatedAt: project.updatedAt,
       thumbnail: project.thumbnail,

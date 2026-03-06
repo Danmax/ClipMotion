@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { MoreVertical, Trash2, Edit3 } from "lucide-react";
+import { MoreVertical, Trash2, Edit3, Globe, Lock, Link2 } from "lucide-react";
 import type { SceneDocument, SceneNode } from "@/engine/types";
 
 interface ProjectCardProps {
   project: {
     id: string;
     name: string;
+    isPublic: boolean;
     fps: number;
     updatedAt: Date | string;
     thumbnail: string | null;
@@ -149,6 +150,30 @@ export function ProjectCard({ project, onDeleted }: ProjectCardProps) {
     ? Object.values(previewDoc.nodes).filter((node) => node.id !== previewDoc.rootNodeId && node.visible)
     : [];
 
+  const handleTogglePublic = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/projects/${project.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isPublic: !project.isPublic }),
+      });
+      if (res.ok) window.location.reload();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCopyShareLink = async () => {
+    const url = `${window.location.origin}/share/projects/${project.id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      alert("Public share link copied.");
+    } catch {
+      alert(url);
+    }
+  };
+
   const handleRename = async () => {
     if (!newName.trim() || newName === project.name) {
       setShowRenameDialog(false);
@@ -243,6 +268,9 @@ export function ProjectCard({ project, onDeleted }: ProjectCardProps) {
             {project.fps} fps &middot;{" "}
             {new Date(project.updatedAt).toLocaleDateString()}
           </p>
+          <p className="mt-1 text-[11px] text-gray-400">
+            {project.isPublic ? "Public" : "Private"}
+          </p>
         </div>
 
         {/* Menu button */}
@@ -278,6 +306,28 @@ export function ProjectCard({ project, onDeleted }: ProjectCardProps) {
                 <Edit3 className="w-4 h-4" />
                 Properties
               </button>
+              <button
+                onClick={() => {
+                  handleTogglePublic();
+                  setShowMenu(false);
+                }}
+                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 transition-colors"
+              >
+                {project.isPublic ? <Lock className="w-4 h-4" /> : <Globe className="w-4 h-4" />}
+                {project.isPublic ? "Make Private" : "Make Public"}
+              </button>
+              {project.isPublic && (
+                <button
+                  onClick={() => {
+                    handleCopyShareLink();
+                    setShowMenu(false);
+                  }}
+                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 transition-colors"
+                >
+                  <Link2 className="w-4 h-4" />
+                  Copy Share Link
+                </button>
+              )}
               <button
                 onClick={() => {
                   setShowDeleteConfirm(true);

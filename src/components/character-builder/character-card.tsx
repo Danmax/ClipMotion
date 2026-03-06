@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2, Pencil } from "lucide-react";
+import { Trash2, Pencil, Globe, Lock, Link2 } from "lucide-react";
 import type { ShapeProps } from "@/engine/types";
 
 interface CharacterCardProps {
   character: {
     id: string;
     name: string;
+    isPublic: boolean;
     shapeData: string;
     updatedAt: Date;
   };
@@ -17,6 +18,7 @@ interface CharacterCardProps {
 export function CharacterCard({ character }: CharacterCardProps) {
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
+  const [sharing, setSharing] = useState(false);
 
   let shape: ShapeProps | null = null;
   try {
@@ -43,6 +45,34 @@ export function CharacterCard({ character }: CharacterCardProps) {
     }
   };
 
+  const handleTogglePublic = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSharing(true);
+    try {
+      const res = await fetch(`/api/characters/${character.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isPublic: !character.isPublic }),
+      });
+      if (res.ok) router.refresh();
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  const handleCopyShareLink = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const url = `${window.location.origin}/share/characters/${character.id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      alert("Public share link copied.");
+    } catch {
+      alert(url);
+    }
+  };
+
   return (
     <div className="group relative bg-gray-900 border border-gray-800 rounded-xl overflow-hidden hover:border-gray-700 transition-colors">
       {/* Preview area */}
@@ -62,6 +92,9 @@ export function CharacterCard({ character }: CharacterCardProps) {
         <p className="text-[10px] text-gray-500 mt-0.5">
           {new Date(character.updatedAt).toLocaleDateString()}
         </p>
+        <p className="text-[10px] text-gray-500 mt-0.5">
+          {character.isPublic ? "Public" : "Private"}
+        </p>
       </div>
 
       {/* Actions overlay */}
@@ -73,6 +106,23 @@ export function CharacterCard({ character }: CharacterCardProps) {
         >
           <Pencil className="w-3.5 h-3.5" />
         </a>
+        <button
+          onClick={handleTogglePublic}
+          disabled={sharing}
+          className="p-1.5 rounded-lg bg-gray-800/80 text-gray-400 hover:text-cyan-300 hover:bg-gray-700 transition-colors disabled:opacity-50"
+          title={character.isPublic ? "Make private" : "Make public"}
+        >
+          {character.isPublic ? <Lock className="w-3.5 h-3.5" /> : <Globe className="w-3.5 h-3.5" />}
+        </button>
+        {character.isPublic && (
+          <button
+            onClick={handleCopyShareLink}
+            className="p-1.5 rounded-lg bg-gray-800/80 text-gray-400 hover:text-cyan-300 hover:bg-gray-700 transition-colors"
+            title="Copy share link"
+          >
+            <Link2 className="w-3.5 h-3.5" />
+          </button>
+        )}
         <button
           onClick={handleDelete}
           disabled={deleting}

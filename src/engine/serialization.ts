@@ -231,7 +231,7 @@ const sceneNodeSchema = z.object({
   childIds: z.array(z.string()),
   visible: z.boolean(),
   locked: z.boolean(),
-  showLabel: z.boolean().default(true),
+  showLabel: z.boolean().default(false),
   layer: z.enum(["background", "normal", "foreground"]).default("normal"),
   transform: transformSchema,
   assetId: z.string().optional(),

@@ -60,11 +60,11 @@ export default async function Home() {
               </>
             ) : (
               <>
-                <Link href="/login" className="text-sm text-gray-400 hover:text-white transition-colors">
+                <Link href="/sign-in" className="text-sm text-gray-400 hover:text-white transition-colors">
                   Sign in
                 </Link>
                 <Link
-                  href="/register"
+                  href="/sign-up"
                   className="px-4 py-1.5 rounded-lg bg-blue-600 text-sm font-medium hover:bg-blue-500 transition-colors"
                 >
                   Get Started
@@ -116,14 +116,14 @@ export default async function Home() {
                   ) : (
                     <>
                       <Link
-                        href="/register"
+                        href="/sign-up"
                         className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-cyan-500 text-slate-950 text-sm sm:text-base font-semibold hover:bg-cyan-400 transition-colors"
                       >
                         Start Free
                         <ArrowRight className="w-4 h-4" />
                       </Link>
                       <Link
-                        href="/login"
+                        href="/sign-in"
                         className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-slate-700 bg-slate-900/70 text-white text-sm sm:text-base font-medium hover:bg-slate-800 transition-colors"
                       >
                         Sign In
@@ -246,7 +246,7 @@ export default async function Home() {
               Free accounts include 30-second clips and 720p export.
             </p>
             <Link
-              href="/register"
+              href="/sign-up"
               className="inline-block px-8 py-3 rounded-xl bg-blue-600 text-base font-medium hover:bg-blue-500 transition-colors"
             >
               Create Your Free Account

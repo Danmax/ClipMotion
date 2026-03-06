@@ -8,7 +8,7 @@ import { redirect } from "next/navigation";
 
 export default async function CharactersPage() {
   const session = await auth();
-  if (!session?.user?.id) redirect("/login");
+  if (!session?.user?.id) redirect("/sign-in");
 
   const characters = await db.character.findMany({
     where: { userId: session.user.id },

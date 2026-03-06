@@ -1,11 +1,11 @@
-import { auth, signOut } from "@/auth";
+import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
 export default async function SettingsPage() {
   const session = await auth();
-  if (!session?.user?.id) redirect("/login");
+  if (!session?.user?.id) redirect("/sign-in");
 
   const user = await db.user.findUnique({
     where: { id: session.user.id },
@@ -19,12 +19,12 @@ export default async function SettingsPage() {
       },
     },
   });
-  if (!user) redirect("/login");
+  if (!user) redirect("/sign-in");
 
   async function updateProfile(formData: FormData) {
     "use server";
     const session = await auth();
-    if (!session?.user?.id) redirect("/login");
+    if (!session?.user?.id) redirect("/sign-in");
 
     const nextNameRaw = formData.get("name");
     const nextName = typeof nextNameRaw === "string" ? nextNameRaw.trim() : "";
@@ -36,11 +36,6 @@ export default async function SettingsPage() {
     });
 
     revalidatePath("/settings");
-  }
-
-  async function signOutAction() {
-    "use server";
-    await signOut({ redirectTo: "/login" });
   }
 
   return (
@@ -105,16 +100,8 @@ export default async function SettingsPage() {
           <section className="rounded-xl border border-red-900/50 bg-red-950/20 p-5">
             <h2 className="text-lg font-semibold text-red-300">Session</h2>
             <p className="text-sm text-red-200/80 mt-1">
-              Sign out from this browser session.
+              Use the top-right profile menu to sign out of Clerk.
             </p>
-            <form action={signOutAction} className="mt-4">
-              <button
-                type="submit"
-                className="inline-flex items-center px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-500 transition-colors"
-              >
-                Sign Out
-              </button>
-            </form>
           </section>
         </div>
       </div>

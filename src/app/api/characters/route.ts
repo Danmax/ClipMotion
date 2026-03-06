@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 
 const createCharacterSchema = z.object({
   name: z.string().min(1).max(100),
+  isPublic: z.boolean().optional(),
   shapeData: z.string().min(2), // JSON string
   faceData: z.string().min(2),  // JSON string
   limbsData: z.string().min(2).optional(), // JSON string
@@ -42,12 +43,13 @@ export async function POST(req: Request) {
     );
   }
 
-  const { name, shapeData, faceData, limbsData, accessoriesData, sourceImageUrl, digitizationMeta } = parsed.data;
+  const { name, isPublic, shapeData, faceData, limbsData, accessoriesData, sourceImageUrl, digitizationMeta } = parsed.data;
 
   const character = await db.character.create({
     data: {
       userId: session.user.id,
       name,
+      isPublic: isPublic ?? false,
       shapeData,
       faceData,
       limbsData: limbsData ?? null,

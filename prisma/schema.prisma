@@ -12,6 +12,7 @@ datasource db {
 
 model User {
   id            String    @id @default(cuid())
+  clerkUserId   String?   @unique
   name          String?
   email         String    @unique
   emailVerified DateTime?
@@ -75,6 +76,7 @@ model VerificationToken {
 model Project {
   id           String   @id @default(cuid())
   userId       String
+  isPublic     Boolean  @default(false)
   name         String
   description  String?
   fps          Int      @default(24)
@@ -93,6 +95,7 @@ model Project {
   exports ExportJob[]
 
   @@index([userId])
+  @@index([isPublic])
   @@map("projects")
 }
 
@@ -138,6 +141,7 @@ model Asset {
 model Character {
   id               String   @id @default(cuid())
   userId           String
+  isPublic         Boolean  @default(false)
   name             String
   shapeData        String   @db.Text // JSON: ShapeProps
   faceData         String   @db.Text // JSON: FaceProps
@@ -151,6 +155,7 @@ model Character {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([isPublic])
   @@map("characters")
 }
 
