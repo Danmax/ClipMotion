@@ -4,12 +4,16 @@
   "private": true,
   "scripts": {
     "dev": "prisma generate && next dev",
+    "dev:local": "prisma generate --schema prisma/schema.local.prisma && prisma db push --schema prisma/schema.local.prisma && next dev",
     "build": "prisma generate && prisma migrate deploy && next build",
+    "build:local": "prisma generate --schema prisma/schema.local.prisma && prisma db push --schema prisma/schema.local.prisma && next build",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
     "prisma:generate": "prisma generate",
+    "prisma:generate:local": "prisma generate --schema prisma/schema.local.prisma",
+    "prisma:dbpush:local": "prisma db push --schema prisma/schema.local.prisma",
     "postinstall": "prisma generate"
   },
   "dependencies": {

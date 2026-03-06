@@ -52,6 +52,16 @@ npm run dev
 
 Open `http://localhost:3000`.
 
+### Local-only DB mode (no cloud required)
+
+Use SQLite locally:
+
+```bash
+npm run dev:local
+```
+
+This uses `prisma/schema.local.prisma` and creates `prisma/dev.local.db`.
+
 ## Database / Infra Notes
 
 - Current default Prisma datasource is PostgreSQL (Supabase-friendly).
@@ -64,12 +74,16 @@ Open `http://localhost:3000`.
 ## Scripts
 
 - `npm run dev` - Prisma generate + Next dev
+- `npm run dev:local` - Local SQLite dev (no Supabase)
 - `npm run build` - Prisma generate + production build
+- `npm run build:local` - Local SQLite build
 - `npm run start` - start production server
 - `npm run lint` - ESLint
 - `npm run test` - Vitest (run once)
 - `npm run test:watch` - Vitest watch
 - `npm run prisma:generate` - regenerate Prisma client
+- `npm run prisma:generate:local` - generate Prisma client from local SQLite schema
+- `npm run prisma:dbpush:local` - push local SQLite schema to `prisma/dev.local.db`
 
 ## Project Structure
 
