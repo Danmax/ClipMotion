@@ -30,6 +30,7 @@ import {
   generateStoryScenePlan,
   type StoryLayerPlan,
   type StoryNodePlan,
+  type StoryScenePlan,
 } from "@/lib/story-prompt-generator";
 import Link from "next/link";
 
@@ -1162,48 +1163,88 @@ export function AssetLibraryPanel() {
     }
   };
 
-  const handleGenerateStoryScene = () => {
+  const applyGeneratedStoryPlan = (plan: StoryScenePlan) => {
+    const selectedHero = userCharacters.find((char) => char.id === storyHeroCharacterId);
+    const selectedPartner = userCharacters.find((char) => char.id === storyPartnerCharacterId);
+    const heroOverride = selectedHero ? toStoryCharacterOverride(selectedHero) : null;
+    const partnerOverride = selectedPartner ? toStoryCharacterOverride(selectedPartner) : null;
+    const resolvedNodes = plan.nodes.map((node) => {
+      if (node.id === "hero" && heroOverride) {
+        return { ...node, ...heroOverride };
+      }
+      if (node.id === "partner" && partnerOverride) {
+        return { ...node, ...partnerOverride };
+      }
+      return node;
+    });
+
+    clearAutoSceneNodes();
+
+    for (const layer of plan.layers) {
+      if (!shouldIncludeSceneLayer(layer)) continue;
+      applyStoryLayer(plan.id, layer);
+    }
+
+    let firstNodeId: string | null = null;
+    for (const node of resolvedNodes) {
+      if (!shouldIncludeTargetLayer(node.layer)) continue;
+      const nodeId = applyStoryNode(plan.id, node);
+      if (!firstNodeId) firstNodeId = nodeId;
+    }
+
+    if (firstNodeId) selectNode(firstNodeId);
+  };
+
+  const handleGenerateStoryScene = async () => {
     const trimmed = storyPrompt.trim();
     if (!trimmed) return;
 
     setIsGeneratingStory(true);
     try {
-      const plan = generateStoryScenePlan(trimmed, {
-        canvasWidth,
-        canvasHeight,
-        durationMs,
-      });
+      let plan: StoryScenePlan | null = null;
+      let usedFallback = false;
 
-      const selectedHero = userCharacters.find((char) => char.id === storyHeroCharacterId);
-      const selectedPartner = userCharacters.find((char) => char.id === storyPartnerCharacterId);
-      const heroOverride = selectedHero ? toStoryCharacterOverride(selectedHero) : null;
-      const partnerOverride = selectedPartner ? toStoryCharacterOverride(selectedPartner) : null;
-      const resolvedNodes = plan.nodes.map((node) => {
-        if (node.id === "hero" && heroOverride) {
-          return { ...node, ...heroOverride };
+      try {
+        const res = await fetch("/api/ai/scene", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            prompt: trimmed,
+            canvasWidth,
+            canvasHeight,
+            durationMs,
+          }),
+        });
+
+        if (!res.ok) {
+          throw new Error(`Scene API failed with ${res.status}`);
         }
-        if (node.id === "partner" && partnerOverride) {
-          return { ...node, ...partnerOverride };
+
+        const payload = (await res.json()) as {
+          plan?: StoryScenePlan;
+        };
+        if (payload.plan) {
+          plan = payload.plan;
         }
-        return node;
-      });
-
-      clearAutoSceneNodes();
-
-      for (const layer of plan.layers) {
-        if (!shouldIncludeSceneLayer(layer)) continue;
-        applyStoryLayer(plan.id, layer);
+      } catch (error) {
+        console.warn("GPT scene generation unavailable, falling back to local planner", error);
+        usedFallback = true;
       }
 
-      let firstNodeId: string | null = null;
-      for (const node of resolvedNodes) {
-        if (!shouldIncludeTargetLayer(node.layer)) continue;
-        const nodeId = applyStoryNode(plan.id, node);
-        if (!firstNodeId) firstNodeId = nodeId;
+      if (!plan) {
+        plan = generateStoryScenePlan(trimmed, {
+          canvasWidth,
+          canvasHeight,
+          durationMs,
+        });
       }
 
-      if (firstNodeId) selectNode(firstNodeId);
-      setStoryStatus(plan.summary);
+      applyGeneratedStoryPlan(plan);
+      setStoryStatus(
+        usedFallback
+          ? `GPT unavailable. ${plan.summary}`
+          : `GPT scene ready. ${plan.summary}`
+      );
     } finally {
       setIsGeneratingStory(false);
     }
@@ -1272,7 +1313,7 @@ export function AssetLibraryPanel() {
               {isGeneratingStory ? "Generating..." : "Generate Short Scene"}
             </button>
             <span className="text-[10px] text-gray-500">
-              Uses local AI-style generation
+              GPT scene synthesis with local fallback
             </span>
           </div>
           {storyStatus && (

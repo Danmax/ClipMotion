@@ -10,7 +10,7 @@ ClipMotion is a web animation editor for creating short animated scenes with cha
 - Timeline keyframes for transform + parallax depth
 - Expression keyframes for face changes over time
 - Canvas tools: select, move, rotate, scale, pen-shape drawing
-- Prompt-to-scene generation (AI-style local story scene planner)
+- Prompt-to-scene generation with GPT-backed scene planning and local fallback
 - Scene Creator presets (background/middleground/foreground)
 - Manual save + autosave with version conflict recovery
 - Export to WebM/MP4 (browser support dependent) and project package (`.clipmotion.json`)
@@ -54,6 +54,8 @@ npm run dev
 ```
 
 Open `http://localhost:3000`.
+
+To enable GPT scene generation, set `OPENAI_API_KEY` in `.env.local`. You can optionally override the model with `OPENAI_SCENE_MODEL`.
 
 ### Local-only DB mode (no cloud required)
 

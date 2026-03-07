@@ -1,5 +1,8 @@
+import { z } from "zod";
 import { applyPreset } from "@/engine/face-presets";
 import {
+  ANIMATABLE_PROPERTIES,
+  DEFAULT_FACE,
   DEFAULT_LIMBS,
   type AccessoryProps,
   type AnimatableProperty,
@@ -69,6 +72,212 @@ interface StorySceneOptions {
   canvasHeight: number;
   durationMs: number;
 }
+
+const STORY_LAYERS = ["background", "normal", "foreground"] as const;
+const SHAPE_TYPES = [
+  "rectangle",
+  "ellipse",
+  "triangle",
+  "star",
+  "polygon",
+  "custom-path",
+  "capsule",
+  "diamond",
+  "trapezoid",
+  "parallelogram",
+  "blob",
+  "asymmetric-blob",
+  "stickfigure",
+] as const;
+const EXPRESSIONS = [
+  "neutral",
+  "happy",
+  "smiles",
+  "joy",
+  "sad",
+  "fear",
+  "angry",
+  "thinking",
+  "worry",
+  "worried",
+  "releive",
+  "content",
+  "bored",
+  "meh",
+  "tongueOut",
+  "sleeping",
+  "tired",
+  "kiss",
+  "flirt",
+  "surprised",
+  "smug",
+  "scared",
+  "dead",
+] as const;
+const EYE_STYLES = [
+  "dot",
+  "circle",
+  "oval",
+  "angry",
+  "closed",
+  "wink",
+  "wide",
+  "sleepy",
+  "sparkle",
+  "heart",
+  "cross",
+  "laughing",
+  "attentive",
+  "roll-eyes",
+  "google-eyes",
+  "intense",
+  "puppy-eyes",
+  "money",
+  "slanted",
+  "side-eye",
+  "tiny",
+  "half-lidded",
+] as const;
+const MOUTH_STYLES = [
+  "smile",
+  "frown",
+  "open",
+  "line",
+  "o",
+  "teeth",
+  "wavy",
+  "small-smile",
+  "tongue",
+  "tongue-smile",
+  "toothy-grin",
+  "fangs",
+  "grin",
+  "smirk-open",
+  "shout",
+  "grimace",
+] as const;
+const EYEBROW_STYLES = ["none", "line", "arc", "angry", "sad"] as const;
+const LIMB_STYLES = ["straight", "bent", "none"] as const;
+const SHOE_STYLES = ["kicks", "dress", "boots", "slides", "cool"] as const;
+const SHOE_ACCESSORIES = ["none", "laces", "stripe", "buckle", "charm", "wings"] as const;
+const HAND_STYLES = [
+  "thumbs-up",
+  "thumbs-down",
+  "peace",
+  "number-1",
+  "cool",
+  "surfer",
+  "heart",
+  "hi-five",
+  "fist-bump",
+  "handshake",
+  "clapping",
+  "congrats",
+  "mittens",
+  "cartoon",
+] as const;
+const ACCESSORY_TYPES = ["hat", "glasses", "prop", "other"] as const;
+
+export const STORY_SCENE_REQUEST_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["summary", "layers", "nodes"],
+  properties: {
+    summary: { type: "string" },
+    layers: {
+      type: "array",
+      maxItems: 5,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["id", "name", "fill", "targetLayer", "wFrac", "hFrac", "xFrac", "yFrac"],
+        properties: {
+          id: { type: "string" },
+          name: { type: "string" },
+          fill: { type: "string" },
+          targetLayer: { type: "string", enum: [...STORY_LAYERS] },
+          parallaxFactor: { type: "number" },
+          wFrac: { type: "number" },
+          hFrac: { type: "number" },
+          xFrac: { type: "number" },
+          yFrac: { type: "number" },
+        },
+      },
+    },
+    nodes: {
+      type: "array",
+      maxItems: 10,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["id", "name", "layer", "shape", "transform"],
+        properties: {
+          id: { type: "string" },
+          name: { type: "string" },
+          layer: { type: "string", enum: [...STORY_LAYERS] },
+          parallaxFactor: { type: "number" },
+          shape: {
+            type: "object",
+            additionalProperties: false,
+            required: ["shapeType", "width", "height", "fill"],
+            properties: {
+              shapeType: { type: "string", enum: [...SHAPE_TYPES] },
+              width: { type: "number" },
+              height: { type: "number" },
+              fill: { type: "string" },
+              stroke: { type: "string" },
+              strokeWidth: { type: "number" },
+              cornerRadius: { type: "number" },
+              pattern: {
+                type: "string",
+                enum: ["none", "stripes", "dots", "checker", "crosshatch", "zigzag"],
+              },
+              patternColor: { type: "string" },
+              patternScale: { type: "number" },
+              points: { type: "number" },
+              customPath: {
+                type: "array",
+                items: {
+                  type: "object",
+                  additionalProperties: false,
+                  required: ["x", "y"],
+                  properties: {
+                    x: { type: "number" },
+                    y: { type: "number" },
+                  },
+                },
+              },
+            },
+          },
+          face: { type: "object" },
+          limbs: { type: "object" },
+          accessories: { type: "array", items: { type: "object" } },
+          transform: {
+            type: "object",
+            additionalProperties: false,
+            required: ["x", "y"],
+            properties: {
+              x: { type: "number" },
+              y: { type: "number" },
+              rotation: { type: "number" },
+              scaleX: { type: "number" },
+              scaleY: { type: "number" },
+              opacity: { type: "number" },
+            },
+          },
+          tracks: { type: "object" },
+          expressionKeys: { type: "array", items: { type: "object" } },
+        },
+      },
+    },
+  },
+} as const;
+
+const generatedSceneEnvelopeSchema = z.object({
+  summary: z.string().optional(),
+  layers: z.array(z.unknown()).optional(),
+  nodes: z.array(z.unknown()).optional(),
+});
 
 type StoryTheme = "city-night" | "forest" | "desert" | "beach" | "factory" | "default";
 type StoryAction = "chase" | "fly" | "dance" | "talk" | "walk";
@@ -191,6 +400,270 @@ function createActorLimbs(): LimbProps {
     legLength: 0.95,
     feet: true,
     shoeStyle: "kicks",
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function readString(value: unknown, fallback: string): string {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : fallback;
+}
+
+function readNumber(value: unknown, fallback: number, min?: number, max?: number): number {
+  const candidate = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(candidate)) return fallback;
+  if (min !== undefined && max !== undefined) return clamp(candidate, min, max);
+  if (min !== undefined) return Math.max(candidate, min);
+  if (max !== undefined) return Math.min(candidate, max);
+  return candidate;
+}
+
+function readBoolean(value: unknown, fallback: boolean): boolean {
+  return typeof value === "boolean" ? value : fallback;
+}
+
+function readEnum<T extends string>(value: unknown, allowed: readonly T[], fallback: T): T {
+  return typeof value === "string" && allowed.includes(value as T) ? (value as T) : fallback;
+}
+
+function sanitizeShape(raw: unknown, options: StorySceneOptions): ShapeProps {
+  const record = isRecord(raw) ? raw : {};
+  const shapeType = readEnum(record.shapeType, SHAPE_TYPES, "rectangle");
+  const shape: ShapeProps = {
+    shapeType,
+    width: readNumber(record.width, Math.round(options.canvasWidth * 0.14), 24, options.canvasWidth * 1.2),
+    height: readNumber(record.height, Math.round(options.canvasHeight * 0.18), 24, options.canvasHeight * 1.2),
+    fill: readString(record.fill, "#58a6ff"),
+  };
+
+  if (typeof record.stroke === "string") shape.stroke = record.stroke;
+  if (record.strokeWidth !== undefined) shape.strokeWidth = readNumber(record.strokeWidth, 0, 0, 24);
+  if (record.cornerRadius !== undefined) shape.cornerRadius = readNumber(record.cornerRadius, 0, 0, 200);
+  if (typeof record.pattern === "string") shape.pattern = readEnum(
+    record.pattern,
+    ["none", "stripes", "dots", "checker", "crosshatch", "zigzag"] as const,
+    "none"
+  );
+  if (typeof record.patternColor === "string") shape.patternColor = record.patternColor;
+  if (record.patternScale !== undefined) shape.patternScale = readNumber(record.patternScale, 1, 0.1, 8);
+  if (record.points !== undefined) shape.points = Math.round(readNumber(record.points, 5, 3, 12));
+  if (Array.isArray(record.customPath)) {
+    const points = record.customPath
+      .filter(isRecord)
+      .slice(0, 16)
+      .map((point) => ({
+        x: readNumber(point.x, 0, -options.canvasWidth, options.canvasWidth),
+        y: readNumber(point.y, 0, -options.canvasHeight, options.canvasHeight),
+      }));
+    if (points.length >= 3) shape.customPath = points;
+  }
+
+  return shape;
+}
+
+function sanitizeFace(raw: unknown): FaceProps | undefined {
+  if (!isRecord(raw)) return undefined;
+  return {
+    expression: readEnum(raw.expression, EXPRESSIONS, DEFAULT_FACE.expression),
+    eyeStyle: readEnum(raw.eyeStyle, EYE_STYLES, DEFAULT_FACE.eyeStyle),
+    eyeSize: readNumber(raw.eyeSize, DEFAULT_FACE.eyeSize, 0.2, 3),
+    eyeSpacing: readNumber(raw.eyeSpacing, DEFAULT_FACE.eyeSpacing, 0.1, 3),
+    eyeOffsetY: readNumber(raw.eyeOffsetY, DEFAULT_FACE.eyeOffsetY, -1, 1),
+    eyeColor: readString(raw.eyeColor, DEFAULT_FACE.eyeColor),
+    pupilSize: readNumber(raw.pupilSize, DEFAULT_FACE.pupilSize, 0, 2),
+    mouthStyle: readEnum(raw.mouthStyle, MOUTH_STYLES, DEFAULT_FACE.mouthStyle),
+    mouthSize: readNumber(raw.mouthSize, DEFAULT_FACE.mouthSize, 0.2, 3),
+    mouthOffsetY: readNumber(raw.mouthOffsetY, DEFAULT_FACE.mouthOffsetY, -1, 1),
+    mouthColor: readString(raw.mouthColor, DEFAULT_FACE.mouthColor),
+    mouthCurve: readNumber(raw.mouthCurve, DEFAULT_FACE.mouthCurve, -2, 2),
+    mouthEffect: readEnum(raw.mouthEffect, ["none", "talk"] as const, DEFAULT_FACE.mouthEffect),
+    mouthTalkSpeed: readNumber(raw.mouthTalkSpeed, DEFAULT_FACE.mouthTalkSpeed, 0.5, 16),
+    mouthTalkAmount: readNumber(raw.mouthTalkAmount, DEFAULT_FACE.mouthTalkAmount, 0, 1.5),
+    eyebrowStyle: readEnum(raw.eyebrowStyle, EYEBROW_STYLES, DEFAULT_FACE.eyebrowStyle),
+    eyebrowColor: readString(raw.eyebrowColor, DEFAULT_FACE.eyebrowColor),
+    eyebrowThickness: readNumber(raw.eyebrowThickness, DEFAULT_FACE.eyebrowThickness, 0.5, 8),
+    eyebrowOffsetY: readNumber(raw.eyebrowOffsetY, DEFAULT_FACE.eyebrowOffsetY, -1, 1),
+    eyebrowTilt: readNumber(raw.eyebrowTilt, DEFAULT_FACE.eyebrowTilt, -90, 90),
+    faceScale: readNumber(raw.faceScale, DEFAULT_FACE.faceScale, 0.25, 3),
+  };
+}
+
+function sanitizeLimbs(raw: unknown): LimbProps | undefined {
+  if (!isRecord(raw)) return undefined;
+  return {
+    armStyle: readEnum(raw.armStyle, LIMB_STYLES, DEFAULT_LIMBS.armStyle),
+    legStyle: readEnum(raw.legStyle, LIMB_STYLES, DEFAULT_LIMBS.legStyle),
+    limbColor: readString(raw.limbColor, DEFAULT_LIMBS.limbColor),
+    limbThickness: readNumber(raw.limbThickness, DEFAULT_LIMBS.limbThickness, 1, 8),
+    armLength: readNumber(raw.armLength, DEFAULT_LIMBS.armLength, 0.3, 1.6),
+    legLength: readNumber(raw.legLength, DEFAULT_LIMBS.legLength, 0.3, 1.6),
+    armSpread: readNumber(raw.armSpread, DEFAULT_LIMBS.armSpread, 0, 1.2),
+    armRotationDeg: readNumber(raw.armRotationDeg, DEFAULT_LIMBS.armRotationDeg, -120, 120),
+    legSpread: readNumber(raw.legSpread, DEFAULT_LIMBS.legSpread, 0, 1.2),
+    feet: readBoolean(raw.feet, DEFAULT_LIMBS.feet),
+    shoeStyle: readEnum(raw.shoeStyle, SHOE_STYLES, DEFAULT_LIMBS.shoeStyle),
+    shoeColor: readString(raw.shoeColor, DEFAULT_LIMBS.shoeColor),
+    shoeSoleColor: readString(raw.shoeSoleColor, DEFAULT_LIMBS.shoeSoleColor),
+    shoeAccessory: readEnum(raw.shoeAccessory, SHOE_ACCESSORIES, DEFAULT_LIMBS.shoeAccessory),
+    shoeAccessoryColor: readString(raw.shoeAccessoryColor, DEFAULT_LIMBS.shoeAccessoryColor),
+    handStyle: readEnum(raw.handStyle, HAND_STYLES, DEFAULT_LIMBS.handStyle),
+    handColor: readString(raw.handColor, DEFAULT_LIMBS.handColor),
+  };
+}
+
+function sanitizeAccessories(raw: unknown): AccessoryProps[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const accessories = raw
+    .filter(isRecord)
+    .slice(0, 6)
+    .map((item, index) => ({
+      id: readString(item.id, `acc-${index + 1}`),
+      type: readEnum(item.type, ACCESSORY_TYPES, "other"),
+      name: readString(item.name, `Accessory ${index + 1}`),
+      x: readNumber(item.x, 0, -2000, 2000),
+      y: readNumber(item.y, 0, -2000, 2000),
+      scale: readNumber(item.scale, 1, 0.1, 4),
+      rotation: readNumber(item.rotation, 0, -360, 360),
+      color: typeof item.color === "string" ? item.color : undefined,
+      accentColor: typeof item.accentColor === "string" ? item.accentColor : undefined,
+      detailColor: typeof item.detailColor === "string" ? item.detailColor : undefined,
+    }));
+
+  return accessories.length > 0 ? accessories : undefined;
+}
+
+function sanitizeTracks(raw: unknown, durationMs: number): StoryTrackMap | undefined {
+  if (!isRecord(raw)) return undefined;
+  const tracks: StoryTrackMap = {};
+
+  for (const property of ANIMATABLE_PROPERTIES) {
+    const value = raw[property];
+    if (!Array.isArray(value)) continue;
+    const keyframes = value
+      .filter(isRecord)
+      .slice(0, 8)
+      .map((frame, index) => {
+        const easing = isRecord(frame.easing)
+          ? {
+              type: readEnum(frame.easing.type, ["linear", "step", "cubicBezier"] as const, "linear"),
+              controlPoints:
+                Array.isArray(frame.easing.controlPoints) && frame.easing.controlPoints.length === 4
+                  ? [
+                      readNumber(frame.easing.controlPoints[0], 0, 0, 1),
+                      readNumber(frame.easing.controlPoints[1], 0, 0, 1),
+                      readNumber(frame.easing.controlPoints[2], 1, 0, 1),
+                      readNumber(frame.easing.controlPoints[3], 1, 0, 1),
+                    ] as [number, number, number, number]
+                  : undefined,
+            }
+          : undefined;
+
+        return {
+          timeMs: Math.round(readNumber(frame.timeMs, Math.round((index / Math.max(1, value.length - 1)) * durationMs), 0, durationMs)),
+          value: readNumber(frame.value, 0, -4000, 4000),
+          easing,
+        };
+      })
+      .sort((a, b) => a.timeMs - b.timeMs);
+
+    if (keyframes.length > 0) {
+      tracks[property] = keyframes;
+    }
+  }
+
+  return Object.keys(tracks).length > 0 ? tracks : undefined;
+}
+
+function sanitizeExpressionKeys(raw: unknown, durationMs: number): StoryExpressionKey[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const keys = raw
+    .filter(isRecord)
+    .slice(0, 6)
+    .map((item, index) => ({
+      timeMs: Math.round(readNumber(item.timeMs, Math.round((index / Math.max(1, raw.length - 1)) * durationMs), 0, durationMs)),
+      face: sanitizeFace(item.face) ?? { ...DEFAULT_FACE },
+    }))
+    .sort((a, b) => a.timeMs - b.timeMs);
+
+  return keys.length > 0 ? keys : undefined;
+}
+
+function sanitizeLayers(raw: unknown): StoryLayerPlan[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter(isRecord)
+    .slice(0, 5)
+    .map((layer, index) => ({
+      id: readString(layer.id, `layer-${index + 1}`),
+      name: readString(layer.name, `Layer ${index + 1}`),
+      fill: readString(layer.fill, index === 0 ? "#a9d6ff" : "#3f7d44"),
+      targetLayer: readEnum(layer.targetLayer, STORY_LAYERS, index === 0 ? "background" : index === 1 ? "normal" : "foreground"),
+      parallaxFactor:
+        layer.parallaxFactor === undefined ? undefined : readNumber(layer.parallaxFactor, index === 0 ? 0.2 : index === 1 ? 0.65 : 1.2, -2, 2),
+      wFrac: readNumber(layer.wFrac, 1, 0.05, 1.4),
+      hFrac: readNumber(layer.hFrac, index === 0 ? 1 : 0.25, 0.05, 1.2),
+      xFrac: readNumber(layer.xFrac, 0, -1.2, 1.2),
+      yFrac: readNumber(layer.yFrac, index === 0 ? 0 : 0.28, -1.2, 1.2),
+    }));
+}
+
+function sanitizeNodes(raw: unknown, options: StorySceneOptions): StoryNodePlan[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter(isRecord)
+    .slice(0, 10)
+    .map((node, index) => {
+      const transform = isRecord(node.transform) ? node.transform : {};
+      return {
+        id: readString(node.id, `node-${index + 1}`),
+        name: readString(node.name, `Node ${index + 1}`),
+        layer: readEnum(node.layer, STORY_LAYERS, "normal"),
+        parallaxFactor:
+          node.parallaxFactor === undefined ? undefined : readNumber(node.parallaxFactor, 0.8, -2, 2),
+        shape: sanitizeShape(node.shape, options),
+        face: sanitizeFace(node.face),
+        limbs: sanitizeLimbs(node.limbs),
+        accessories: sanitizeAccessories(node.accessories),
+        transform: {
+          x: readNumber(transform.x, 0, -options.canvasWidth, options.canvasWidth),
+          y: readNumber(transform.y, 0, -options.canvasHeight, options.canvasHeight),
+          rotation: readNumber(transform.rotation, 0, -360, 360),
+          scaleX: readNumber(transform.scaleX, 1, -4, 4),
+          scaleY: readNumber(transform.scaleY, 1, -4, 4),
+          opacity: readNumber(transform.opacity, 1, 0, 1),
+        },
+        tracks: sanitizeTracks(node.tracks, Math.max(2000, options.durationMs)),
+        expressionKeys: sanitizeExpressionKeys(node.expressionKeys, Math.max(2000, options.durationMs)),
+      };
+    });
+}
+
+export function normalizeGeneratedStoryScenePlan(
+  raw: unknown,
+  promptText: string,
+  options: StorySceneOptions
+): StoryScenePlan {
+  const fallback = generateStoryScenePlan(promptText, options);
+  const envelope = generatedSceneEnvelopeSchema.safeParse(raw);
+  if (!envelope.success) return fallback;
+
+  const layers = sanitizeLayers(envelope.data.layers);
+  const nodes = sanitizeNodes(envelope.data.nodes, options);
+
+  if (layers.length === 0 || nodes.length === 0) return fallback;
+
+  return {
+    id: fallback.id,
+    prompt: promptText.trim(),
+    summary: readString(envelope.data.summary, fallback.summary),
+    layers,
+    nodes,
   };
 }
 
